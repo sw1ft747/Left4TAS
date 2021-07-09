@@ -1,0 +1,9 @@
+[submodule "l4d2-sdk"]
+	path = left4tas/l4d2-sdk
+	url = https://github.com/alliedmodders/hl2sdk.git
+	branch = l4d2
+	shallow = true
+[submodule "libdasm"]
+	path = left4tas/libdasm
+	url = https://github.com/jtpereyda/libdasm.git
+	shallow = true
