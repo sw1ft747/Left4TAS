@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28803.202
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "left4tas", "left4tas\left4tas.vcxproj", "{37E35D83-8D67-4EBF-A330-3AAC38DD5769}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Debug|x86.ActiveCfg = Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Debug|x86.Build.0 = Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Release|x86.ActiveCfg = Release|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A61867FD-E5F2-4F6E-B573-1FA23D8BFA2B}
+	EndGlobalSection
+EndGlobal

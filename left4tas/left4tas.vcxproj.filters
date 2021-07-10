@@ -1,0 +1,219 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="VScripts">
+      <UniqueIdentifier>{d077f90c-0862-4016-8bcf-61d8ed2304af}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{86848b99-7ca2-46ec-b9fa-1ce7e0febc0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Left4TAS">
+      <UniqueIdentifier>{148e7567-db8d-4ad6-a086-08532439fb15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="User Messages">
+      <UniqueIdentifier>{22527bf0-25dd-4f75-962a-c2905ce7596b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Left4TAS\Modules">
+      <UniqueIdentifier>{c0b126db-0724-4e50-bd40-3e072529ed5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Left4TAS\Tools">
+      <UniqueIdentifier>{bb4a4034-bb43-4759-b10c-21a0b58480b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libdasm">
+      <UniqueIdentifier>{033f5582-86a2-4a17-bc6e-723563157f88}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="left4tas.cpp">
+      <Filter>Left4TAS</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\utils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="usermsg\recipientfilter.cpp">
+      <Filter>User Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="usermsg\usermessages.cpp">
+      <Filter>User Messages</Filter>
+    </ClCompile>
+    <ClCompile Include="patterns.cpp">
+      <Filter>Left4TAS</Filter>
+    </ClCompile>
+    <ClCompile Include="offsets.cpp">
+      <Filter>Left4TAS</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\misc.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\client.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\server.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="cvars.cpp">
+      <Filter>Left4TAS</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\vstdlib.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\autojump.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\netpropmanager.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\recvpropmanager.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\strafestuff.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="libdasm\libdasm.c">
+      <Filter>libdasm</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\vtable_hook.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\trampoline_hook.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\signature_scanner.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\patcher.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\detour_hook.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\vgui.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\timer.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\engine.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="vscript\vscript_shared.cpp">
+      <Filter>VScripts</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\vscript.cpp">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClCompile>
+    <ClCompile Include="prop_offsets.cpp">
+      <Filter>Left4TAS</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\simple_trigger.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="vscript\ivscript.h">
+      <Filter>VScripts</Filter>
+    </ClInclude>
+    <ClInclude Include="vscript\vscript_templates.h">
+      <Filter>VScripts</Filter>
+    </ClInclude>
+    <ClInclude Include="left4tas.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="patterns.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="offsets.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\patterns_base.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="usermsg\recipientfilter.h">
+      <Filter>User Messages</Filter>
+    </ClInclude>
+    <ClInclude Include="usermsg\usermessages.h">
+      <Filter>User Messages</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\misc.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\tools.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\server.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\client.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="cvars.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\vstdlib.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\autojump.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\strafe_utils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\strafestuff.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\netpropmanager.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\recvpropmanager.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="libdasm\libdasm.h">
+      <Filter>libdasm</Filter>
+    </ClInclude>
+    <ClInclude Include="libdasm\opcode_tables.h">
+      <Filter>libdasm</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\vtable_hook.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\trampoline_hook.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\signature_scanner.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\patcher.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\detour_hook.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\vgui.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\timer.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\engine.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="vscript\vscript_shared.h">
+      <Filter>VScripts</Filter>
+    </ClInclude>
+    <ClInclude Include="modules\vscript.h">
+      <Filter>Left4TAS\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="prop_offsets.h">
+      <Filter>Left4TAS</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\simple_trigger.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
