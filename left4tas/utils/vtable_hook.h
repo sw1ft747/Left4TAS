@@ -38,6 +38,11 @@ public:
 
 	int TotalFunctions() const;
 
+public:
+	static void *HookFunction(void *pBaseClass, void *pHookFunction, const int nIndex);
+
+	static void UnhookFunction(void *pBaseClass, void *pOriginalFunction, const int nIndex);
+
 private:
 	DWORD **m_pBaseClass;
 

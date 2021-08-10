@@ -11,15 +11,23 @@ namespace Patterns
 	{
 		INIT_PATTERN(Host_NewGame);
 		INIT_PATTERN(Host_Changelevel);
+
+		INIT_PATTERN(Cbuf_AddText);
+		INIT_PATTERN(Cbuf_Execute);
+
+		INIT_PATTERN(GetBaseLocalClient);
 	}
 
 	namespace Client
 	{
+		INIT_PATTERN(CCSModeManager__Init);
+
 		INIT_PATTERN(C_BasePlayer__CheckForLocalPlayer);
 
 		INIT_PATTERN(CInput__GetButtonBits);
 		INIT_PATTERN(CInput__CreateMove);
 		INIT_PATTERN(CInput__AdjustAngles);
+		INIT_PATTERN(CInput__ControllerMove);
 
 		INIT_PATTERN(CGameMovement__CheckJumpButton);
 	}
@@ -38,17 +46,19 @@ namespace Patterns
 
 		INIT_PATTERN(UTIL_PlayerByIndex);
 
+		INIT_PATTERN(RestoreTransitionedEntities);
+
 		INIT_PATTERN(CDirectorChallengeMode__TeamStartTouchIsValid);
+
 		INIT_PATTERN(CDirectorSessionManager__UnfreezeTeam);
+		INIT_PATTERN(CDirectorSessionManager__FireGameEvent);
 
 		INIT_PATTERN(CDirector__OnStartIntro);
 		INIT_PATTERN(CDirector__OnFinishIntro);
 		INIT_PATTERN(CDirector__OnBeginTransition);
 		INIT_PATTERN(CDirector__OnFinaleEscapeForceSurvivorPositions);
-		INIT_PATTERN(CDirector__OnFinaleEscapeForceSurvivorPositions_v2213);
 
 		INIT_PATTERN(CFinaleTrigger__OnFinaleEscapeForceSurvivorPositions);
-		INIT_PATTERN(CFinaleTrigger__OnFinaleEscapeForceSurvivorPositions_v2213);
 
 		INIT_PATTERN(CTerrorGameRules__RestartRound);
 
@@ -58,6 +68,12 @@ namespace Patterns
 		INIT_PATTERN(CGameMovement__CheckJumpButton);
 
 		INIT_PATTERN(ForEachTerrorPlayer_FindCharacter);
+	}
+
+	namespace VGUIMatSurface
+	{
+		INIT_PATTERN(CMatSystemSurface__StartDrawing);
+		INIT_PATTERN(CMatSystemSurface__FinishDrawing);
 	}
 
 	namespace VSTDLib

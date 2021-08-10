@@ -55,16 +55,35 @@ class CSurface : public ISurface
 public:
 	inline HFont __CreateFont()
 	{
+		static DWORD *pVTable = NULL;
+
+		if (!pVTable)
+			pVTable = *reinterpret_cast<DWORD **>(this);
+
 		// HFont ISurface::CreateFont();
-		const DWORD *pVTable = *reinterpret_cast<DWORD **>(this);
 		return reinterpret_cast<HFont (__thiscall *)(void *)>(pVTable[63])(this);
 	}
 
 	inline bool __SetFontGlyphSet(HFont font, const char *windowsFontName, int tall, int weight, int blur, int scanlines, int flags, int nRangeMin = 0, int nRangeMax = 0)
 	{
+		static DWORD *pVTable = NULL;
+
+		if (!pVTable)
+			pVTable = *reinterpret_cast<DWORD **>(this);
+
 		// bool ISurface::SetFontGlyphSet(HFont font, const char *windowsFontName, int tall, int weight, int blur, int scanlines, int flags, int nRangeMin = 0, int nRangeMax = 0);
-		const DWORD *pVTable = *reinterpret_cast<DWORD **>(this);
 		return reinterpret_cast<bool (__thiscall *)(void *, HFont, const char *, int, int, int, int, int, int, int)>(pVTable[64])(this, font, windowsFontName, tall, weight, blur, scanlines, flags, nRangeMin, nRangeMax);
+	}
+
+	inline int __GetFontTall(HFont font)
+	{
+		static DWORD *pVTable = NULL;
+
+		if (!pVTable)
+			pVTable = *reinterpret_cast<DWORD **>(this);
+
+		// int ISurface::GetFontTall(HFont font);
+		return reinterpret_cast<int (__thiscall *)(void *, HFont)>(pVTable[66])(this, font);
 	}
 };
 
@@ -75,7 +94,8 @@ using namespace vgui;
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-typedef void (__thiscall *PaintTraverseFn)(void *, VPANEL, bool, bool);
+typedef void (__thiscall *StartDrawingFn)(void *);
+typedef void (__thiscall *FinishDrawingFn)(void *);
 
 //-----------------------------------------------------------------------------
 // Interfaces
@@ -89,6 +109,8 @@ extern IVEngineClient *g_pEngineClient;
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+
+void DrawHUD();
 
 inline IPanel *ipanel()
 {

@@ -4,7 +4,9 @@
 #include "misc.h"
 
 #include "utils.h"
+
 #include "../offsets.h"
+#include "../prop_offsets.h"
 #include "../usermsg/usermessages.h"
 
 //-----------------------------------------------------------------------------
@@ -29,7 +31,6 @@ variant_t g_EmptyVariant;
 GoAwayFromKeyboardFn __GoAwayFromKeyboard = NULL;
 TakeOverBotFn __TakeOverBot = NULL;
 UTIL_PlayerByIndexFn __UTIL_PlayerByIndex = NULL;
-AcceptInputFn __AcceptInput = NULL;
 ForEachTerrorPlayer_FindCharacterFn __ForEachTerrorPlayer_FindCharacter = NULL;
 
 void SetName(int index, const char *szName)
@@ -164,13 +165,26 @@ void ClientPrint(int client, int dest, const char *pszMessage)
 
 CON_COMMAND(tas_setname, "Set client's name")
 {
-	if (args.ArgC() < 3)
+	if (args.ArgC() < 4)
 	{
-		Msg("Usage: tas_setname [index] [name]\n");
+		Msg("Usage: tas_setname [mode: 0 - index, 1 - character] [index/character] [name]\nCharacters: 0 - Nick/Bill, 1 - Rochelle/Zoey, 2 - Coach/Louis, 3 - Ellis/Francis\n");
 		return;
 	}
 
-	SetName(atol(args.Arg(1)), args.Arg(2));
+	int mode = atol(args.Arg(1));
+
+	if (mode)
+	{
+		struct FindCharacter findCharacter = { static_cast<SurvivorCharacterType>(atol(args.Arg(2))), NULL };
+		ForEachTerrorPlayer_FindCharacter(findCharacter);
+
+		if (findCharacter.player)
+			SetName(EntIndexOfBaseEntity((CBaseEntity *)findCharacter.player), args.Arg(3));
+	}
+	else
+	{
+		SetName(atol(args.Arg(2)), args.Arg(3));
+	}
 }
 
 CON_COMMAND(tas_fake, "Create a fake client")
@@ -198,8 +212,11 @@ CON_COMMAND(tas_fake, "Create a fake client")
 	}
 }
 
-CON_COMMAND(tas_idle, "")
+CON_COMMAND(tas_idle, "Go to IDLE mode")
 {
+	if (!__GoAwayFromKeyboard || !__ForEachTerrorPlayer_FindCharacter || !__UTIL_PlayerByIndex)
+		return;
+
 	if (args.ArgC() < 3)
 	{
 		Msg("Usage: tas_idle [mode: 0 - index, 1 - character] [index/character]\nCharacters: 0 - Nick/Bill, 1 - Rochelle/Zoey, 2 - Coach/Louis, 3 - Ellis/Francis\n");
@@ -225,11 +242,14 @@ CON_COMMAND(tas_idle, "")
 	}
 }
 
-CON_COMMAND(tas_take, "")
+CON_COMMAND(tas_take, "Take over a bot")
 {
+	if (!__TakeOverBot || !__ForEachTerrorPlayer_FindCharacter || !__UTIL_PlayerByIndex)
+		return;
+
 	if (args.ArgC() < 3)
 	{
-		Msg("Usage: tas_idle [mode: 0 - index, 1 - character] [index/character]\nCharacters: 0 - Nick/Bill, 1 - Coach/Louis, 2 - Rochelle/Zoey, 3 - Ellis/Francis\n");
+		Msg("Usage: tas_take [mode: 0 - index, 1 - character] [index/character]\nCharacters: 0 - Nick/Bill, 1 - Rochelle/Zoey, 2 - Coach/Louis, 3 - Ellis/Francis\n");
 		return;
 	}
 
@@ -239,9 +259,19 @@ CON_COMMAND(tas_take, "")
 	{
 		struct FindCharacter findCharacter = { static_cast<SurvivorCharacterType>(atol(args.Arg(2))), NULL };
 		ForEachTerrorPlayer_FindCharacter(findCharacter);
-
+		
 		if (findCharacter.player)
-			TakeOverBot(findCharacter.player, true);
+		{
+			int nHumanSpectatorIndex = *reinterpret_cast<int *>(GetOffset(findCharacter.player, NetPropOffsets::m_humanSpectatorEntIndex));
+
+			if (nHumanSpectatorIndex > 0)
+			{
+				CTerrorPlayer *pPlayer = (CTerrorPlayer *)UTIL_PlayerByIndex(nHumanSpectatorIndex);
+
+				if (pPlayer)
+					TakeOverBot(pPlayer, true);
+			}
+		}
 	}
 	else
 	{

@@ -5,6 +5,7 @@
 
 #include "../sdk.h"
 #include "../game/server/variant_t.h"
+#include "../structs/functors.h"
 
 #include "utils.h"
 #include "../offsets.h"
@@ -16,23 +17,6 @@ class CBasePlayer;
 class CTerrorPlayer;
 
 extern variant_t g_EmptyVariant;
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-enum SurvivorCharacterType
-{
-	Nick = 0,
-	Rochelle,
-	Coach,
-	Ellis
-};
-
-struct FindCharacter
-{
-	SurvivorCharacterType characterType;
-	CTerrorPlayer *player;
-};
 
 //-----------------------------------------------------------------------------
 // Typedefs
@@ -54,7 +38,6 @@ typedef bool (*ForEachTerrorPlayer_FindCharacterFn)(FindCharacter &);
 extern GoAwayFromKeyboardFn __GoAwayFromKeyboard;
 extern TakeOverBotFn __TakeOverBot;
 extern UTIL_PlayerByIndexFn __UTIL_PlayerByIndex;
-extern AcceptInputFn __AcceptInput;
 extern ForEachTerrorPlayer_FindCharacterFn __ForEachTerrorPlayer_FindCharacter;
 
 void SetName(int index, const char *szName);
@@ -94,6 +77,11 @@ inline bool TakeOverBot(CTerrorPlayer *pTerrorPlayer, bool bUnknown)
 
 inline bool AcceptInput(CBaseEntity *pEntity, const char *szInputName, CBaseEntity *pActivator, CBaseEntity *pCaller, variant_t Value, int outputID)
 {
+	static AcceptInputFn __AcceptInput = NULL;
+
+	if (!__AcceptInput)
+		__AcceptInput = GetVTableFunction<AcceptInputFn>(pEntity, Offsets::Functions::CBaseEntity__AcceptInput);
+
 	return __AcceptInput(pEntity, szInputName, pActivator, pCaller, Value, outputID);
 }
 

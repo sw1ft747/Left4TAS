@@ -9,16 +9,36 @@
 
 #include <vector>
 
+#define MAX_SPLITSCREEN_PLAYERS 2
+
+//-----------------------------------------------------------------------------
+
+class C_BaseEntity;
+class C_BasePlayer;
+class CUserCmd;
+class IClientMode;
+
 //-----------------------------------------------------------------------------
 // Typedefs for hooks
 //-----------------------------------------------------------------------------
 
 typedef C_BaseEntity *(__thiscall *GetGroundEntityFn)(void *);
+
+typedef bool (__thiscall *AddSplitScreenUserFn)(void *, int, int);
+typedef bool (__thiscall *RemoveSplitScreenUserFn)(void *, int, int);
+
+typedef void (__thiscall *CCSModeManager__InitFn)(void *);
+
 typedef void (__stdcall *HudUpdateFn)(bool); // ecx is not used
+
+typedef bool (__thiscall *IClientMode__CreateMoveFn)(void *, float, CUserCmd *);
+
 typedef int (__thiscall *GetButtonBitsFn)(void *, bool);
 typedef void (__thiscall *CreateMoveFn)(void *, int, float, bool);
+typedef void (__thiscall *ControllerMoveFn)(void *, int, float, CUserCmd *);
 typedef void (__stdcall *AdjustAnglesFn)(int, float); // ecx is not used
-typedef bool (__thiscall *CheckJumpButtonFn)(void *);
+
+typedef bool (__thiscall *CheckJumpButtonClientFn)(void *);
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -26,11 +46,11 @@ typedef bool (__thiscall *CheckJumpButtonFn)(void *);
 class CWaitFrame
 {
 public:
-	CWaitFrame(long long nFrames, const char *szCommand, size_t length);
+	CWaitFrame(long long nFrames, const char *szCommand);
 	~CWaitFrame();
 
 	long long m_nFrames;
-	char *m_szCommand;
+	const char *m_szCommand;
 };
 
 struct input_state
@@ -52,7 +72,7 @@ struct input_state
 
 struct bhop_info
 {
-	bhop_info() : nJumps(0), flSpeedLoss(0.0f), flPercentage(0.0f), flLastSpeed(0.0f)
+	bhop_info() : nJumps(0), flSpeedLoss(0.0f), flPercentage(100.0f), flLastSpeed(0.0f)
 	{
 	}
 
@@ -62,8 +82,21 @@ struct bhop_info
 	float flLastSpeed;
 };
 
+//-----------------------------------------------------------------------------
+
 extern std::vector<CWaitFrame *> g_vecWaitFrames;
-extern input_state g_InputState;
+
+extern bool g_bAutoJumpClient[MAX_SPLITSCREEN_PLAYERS];
+extern input_state g_InputState[MAX_SPLITSCREEN_PLAYERS];
+extern IClientMode **g_pClientMode;
+extern C_BasePlayer **s_pLocalPlayer;
+extern bhop_info g_bhopInfo;
+
+extern int g_nForceUser;
+extern bool g_bInSplitScreen;
+
+void GetViewAngles(int nSlot, QAngle &va);
+void SetViewAngles(int nSlot, QAngle &va);
 
 //-----------------------------------------------------------------------------
 // Controls

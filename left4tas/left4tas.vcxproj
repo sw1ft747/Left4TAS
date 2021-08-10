@@ -88,7 +88,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;LEFT4TAS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;LEFT4TAS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -110,7 +110,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;LEFT4TAS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;LEFT4TAS_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -199,12 +199,13 @@
     <ClCompile Include="offsets.cpp" />
     <ClCompile Include="patterns.cpp" />
     <ClCompile Include="prop_offsets.cpp" />
-    <ClCompile Include="tools\autojump.cpp" />
+    <ClCompile Include="tools\input_manager.cpp" />
     <ClCompile Include="tools\misc.cpp" />
     <ClCompile Include="tools\netpropmanager.cpp" />
+    <ClCompile Include="tools\random.cpp" />
     <ClCompile Include="tools\recvpropmanager.cpp" />
     <ClCompile Include="tools\simple_trigger.cpp" />
-    <ClCompile Include="tools\strafestuff.cpp" />
+    <ClCompile Include="tools\strafe.cpp" />
     <ClCompile Include="tools\timer.cpp" />
     <ClCompile Include="usermsg\recipientfilter.cpp" />
     <ClCompile Include="usermsg\usermessages.cpp" />
@@ -231,12 +232,17 @@
     <ClInclude Include="patterns.h" />
     <ClInclude Include="prop_offsets.h" />
     <ClInclude Include="sdk.h" />
-    <ClInclude Include="tools\autojump.h" />
+    <ClInclude Include="structs\cl_splitscreen.h" />
+    <ClInclude Include="structs\cmd.h" />
+    <ClInclude Include="structs\functors.h" />
+    <ClInclude Include="structs\inputdata_t.h" />
+    <ClInclude Include="tools\input_manager.h" />
     <ClInclude Include="tools\misc.h" />
     <ClInclude Include="tools\netpropmanager.h" />
+    <ClInclude Include="tools\random.h" />
     <ClInclude Include="tools\recvpropmanager.h" />
     <ClInclude Include="tools\simple_trigger.h" />
-    <ClInclude Include="tools\strafestuff.h" />
+    <ClInclude Include="tools\strafe.h" />
     <ClInclude Include="tools\timer.h" />
     <ClInclude Include="tools\tools.h" />
     <ClInclude Include="usermsg\recipientfilter.h" />

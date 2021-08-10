@@ -21,10 +21,12 @@ CSimpleTrigger::CSimpleTrigger(const char *pszTriggerOutput, Vector &vecStart, V
 	m_vecStart = vecStart;
 	m_vecEnd = vecEnd;
 
+	m_customData = 0;
+
 	memcpy(m_szTriggerOutput, pszTriggerOutput, strlen(pszTriggerOutput) + 1);
 }
 
-bool CSimpleTrigger::Think(Vector *vecPos)
+bool CSimpleTrigger::Think(Vector *vecPos) const
 {
 	if (IsPointInBox(vecPos))
 	{
@@ -36,12 +38,22 @@ bool CSimpleTrigger::Think(Vector *vecPos)
 	return false;
 }
 
-bool CSimpleTrigger::IsValueInRange(float flValue, float flMin, float flMax)
+int CSimpleTrigger::GetCustomData() const
+{
+	return m_customData;
+}
+
+void CSimpleTrigger::SetCustomData(int data)
+{
+	m_customData = data;
+}
+
+bool CSimpleTrigger::IsValueInRange(float flValue, float flMin, float flMax) const
 {
 	return flMax > flMin ? (flValue > flMin && flValue < flMax) : (flValue > flMax && flValue < flMin);
 }
 
-bool CSimpleTrigger::IsPointInBox(Vector *vecPos)
+bool CSimpleTrigger::IsPointInBox(Vector *vecPos) const
 {
 	return IsValueInRange(vecPos->x, m_vecStart.x, m_vecEnd.x) &&
 		IsValueInRange(vecPos->y, m_vecStart.y, m_vecEnd.y) &&

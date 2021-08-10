@@ -12,7 +12,13 @@
 
 #include "vscript.h"
 
+#include "../libdasm/libdasm.h"
+
 //-----------------------------------------------------------------------------
+
+extern IVEngineServer *g_pEngineServer;
+extern IServerPluginHelpers *g_pServerPluginHelpers;
+
 //-----------------------------------------------------------------------------
 
 static bool __INITIALIZED__ = false;
@@ -38,12 +44,26 @@ VScriptServerInitFn VScriptServerInit_Original = NULL;
 VScriptServerTermFn VScriptServerTerm_Original = NULL;
 
 //-----------------------------------------------------------------------------
-// Class for interacting with the plugin from VScripts
+// Class for interacting with Left4TAS from VScripts
 //-----------------------------------------------------------------------------
 
 class CScriptLeft4TAS
 {
 public:
+	void ServerCommand(const char *pszCommand)
+	{
+		g_pEngineServer->ServerCommand(pszCommand);
+		g_pEngineServer->ServerExecute();
+	}
+
+	void ClientCommand(int index, const char *pszCommand)
+	{
+		edict_t *pEdict = EntIndexToEdict(index);
+
+		if (IsEdictValid(pEdict))
+			g_pServerPluginHelpers->ClientCommand(pEdict, pszCommand);
+	}
+
 	void StartTimer()
 	{
 		g_Timer.Start();
@@ -147,6 +167,11 @@ public:
 		return ::CreateFakeClientNamedTeam(pszName, nTeam);
 	}
 
+	const char *GetCurrentMap()
+	{
+		return gpGlobals->mapname.ToCStr();
+	}
+
 	const char *GetVersion()
 	{
 		extern const char *g_szPluginVersion;
@@ -155,26 +180,29 @@ public:
 } g_ScriptLeft4TAS;
 
 BEGIN_SCRIPTDESC_ROOT_NAMED(CScriptLeft4TAS, "CLeft4TAS", SCRIPT_SINGLETON "Interface for interacting with Left4TAS")
-DEFINE_SCRIPTFUNC(StartTimer, "Start the timer")
-DEFINE_SCRIPTFUNC(StopTimer, "Stop the timer")
-DEFINE_SCRIPTFUNC(ResetTimer, "Reset the timer")
-DEFINE_SCRIPTFUNC(IsTimerStarted, "Returns true if the timer is started")
-DEFINE_SCRIPTFUNC(PrintTicks, "Print the current/total ticks")
-DEFINE_SCRIPTFUNC(PrintTime, "Print the current/total time")
-DEFINE_SCRIPTFUNC(GetTime, "Get the current/total time")
-DEFINE_SCRIPTFUNC(SetSegmentTime, "Set the time from previous segment")
-DEFINE_SCRIPTFUNC(SayText, "Print message to the client")
-DEFINE_SCRIPTFUNC(SayTextAll, "Print message to all clients")
-DEFINE_SCRIPTFUNC(ClientPrint, "Print message to the client")
-DEFINE_SCRIPTFUNC(ClientPrintAll, "Print message to all clients")
-DEFINE_SCRIPTFUNC(SetName, "Set client's name")
-DEFINE_SCRIPTFUNC(GoAwayFromKeyboard, "Go to IDLE mode")
-DEFINE_SCRIPTFUNC(TakeOverBot, "Take over a bot")
-DEFINE_SCRIPTFUNC(CreateFakeClient, "Create a fake client")
-DEFINE_SCRIPTFUNC(CreateFakeClientNamed, "Create a fake client with a given name")
-DEFINE_SCRIPTFUNC(CreateFakeClientTeam, "Create a fake client and change team to the chosen one")
-DEFINE_SCRIPTFUNC(CreateFakeClientNamedTeam, "Create a fake client with a given name and change team to the chosen one")
-DEFINE_SCRIPTFUNC(GetVersion, "Get current version of Left4TAS")
+	DEFINE_SCRIPTFUNC(ServerCommand, "Immediately execute a server command")
+	DEFINE_SCRIPTFUNC(ClientCommand, "Send a command to client")
+	DEFINE_SCRIPTFUNC(StartTimer, "Start the timer")
+	DEFINE_SCRIPTFUNC(StopTimer, "Stop the timer")
+	DEFINE_SCRIPTFUNC(ResetTimer, "Reset the timer")
+	DEFINE_SCRIPTFUNC(IsTimerStarted, "Returns true if the timer is started")
+	DEFINE_SCRIPTFUNC(PrintTicks, "Print the current/total ticks")
+	DEFINE_SCRIPTFUNC(PrintTime, "Print the current/total time")
+	DEFINE_SCRIPTFUNC(GetTime, "Get the current/total time")
+	DEFINE_SCRIPTFUNC(SetSegmentTime, "Set the time from previous segment")
+	DEFINE_SCRIPTFUNC(SayText, "Print message to the client")
+	DEFINE_SCRIPTFUNC(SayTextAll, "Print message to all clients")
+	DEFINE_SCRIPTFUNC(ClientPrint, "Print message to the client")
+	DEFINE_SCRIPTFUNC(ClientPrintAll, "Print message to all clients")
+	DEFINE_SCRIPTFUNC(SetName, "Set client's name")
+	DEFINE_SCRIPTFUNC(GoAwayFromKeyboard, "Go to IDLE mode")
+	DEFINE_SCRIPTFUNC(TakeOverBot, "Take over a bot")
+	DEFINE_SCRIPTFUNC(CreateFakeClient, "Create a fake client")
+	DEFINE_SCRIPTFUNC(CreateFakeClientNamed, "Create a fake client with a given name")
+	DEFINE_SCRIPTFUNC(CreateFakeClientTeam, "Create a fake client and change team to the chosen one")
+	DEFINE_SCRIPTFUNC(CreateFakeClientNamedTeam, "Create a fake client with a given name and change team to the chosen one")
+	DEFINE_SCRIPTFUNC(GetCurrentMap, "Get map name")
+	DEFINE_SCRIPTFUNC(GetVersion, "Get current version of Left4TAS")
 END_SCRIPTDESC();
 
 //-----------------------------------------------------------------------------
@@ -240,11 +268,16 @@ bool IsVScriptModuleInit()
 
 bool InitVScriptModule()
 {
+	INSTRUCTION instruction;
+
+	if (!__UTIL_PlayerByIndex || !__GoAwayFromKeyboard || !__TakeOverBot)
+		return false;
+
 	void *pVScriptServerInit = FIND_PATTERN(L"server.dll", Patterns::Server::VScriptServerInit);
 
 	if (!pVScriptServerInit)
 	{
-		FailedInit("InitVScriptSystem");
+		FailedInit("VScriptServerInit");
 		return false;
 	}
 
@@ -256,11 +289,31 @@ bool InitVScriptModule()
 		return false;
 	}
 
-	if (!__UTIL_PlayerByIndex || !__GoAwayFromKeyboard || !__TakeOverBot)
-		return false;
+	// g_pScriptManager
+	get_instruction(&instruction, (BYTE *)GetOffset(pVScriptServerTerm, Offsets::Variables::g_pScriptManager), MODE_32);
 
-	g_pScriptManager = **reinterpret_cast<IScriptManager ***>(GetOffset(pVScriptServerTerm, Offsets::Variables::g_pScriptManager));
-	s_ScriptVM = *reinterpret_cast<IScriptVM ***>(GetOffset(pVScriptServerTerm, Offsets::Variables::g_pScriptVM));
+	if (instruction.type == INSTRUCTION_TYPE_MOV && instruction.op1.type == OPERAND_TYPE_REGISTER && instruction.op2.type == OPERAND_TYPE_MEMORY)
+	{
+		g_pScriptManager = *reinterpret_cast<IScriptManager **>(instruction.op2.displacement);
+	}
+	else
+	{
+		FailedInit("g_pScriptManager");
+		return false;
+	}
+
+	// g_pScriptVM
+	get_instruction(&instruction, (BYTE *)GetOffset(pVScriptServerTerm, Offsets::Variables::g_pScriptVM), MODE_32);
+
+	if (instruction.type == INSTRUCTION_TYPE_CMP && instruction.op1.type == OPERAND_TYPE_MEMORY && instruction.op2.type == OPERAND_TYPE_IMMEDIATE)
+	{
+		s_ScriptVM = reinterpret_cast<IScriptVM **>(instruction.op1.displacement);
+	}
+	else
+	{
+		FailedInit("g_pScriptVM");
+		return false;
+	}
 
 	g_pScriptVM = *s_ScriptVM;
 

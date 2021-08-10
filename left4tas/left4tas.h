@@ -8,7 +8,7 @@
 
 #include "sdk.h"
 
-#define PLUGIN_VER "1.0.0"
+#define PLUGIN_VER "1.1.0"
 
 // Solve incorrect linking
 int (WINAPIV *__vsnprintf)(char *, size_t, const char *, va_list) = _vsnprintf;
@@ -22,11 +22,13 @@ IServerGameClients *g_pServerGameClients = NULL;
 IVEngineServer *g_pEngineServer = NULL;
 IVEngineClient *g_pEngineClient = NULL;
 IEngineTrace *g_pEngineTrace = NULL;
+IEngineVGui *g_pEngineVGui = NULL;
 IVDebugOverlay *g_pDebugOverlay = NULL;
 IPlayerInfoManager *g_pPlayerInfoManager = NULL;
 IGameEventManager2 *g_pGameEventManager = NULL;
 IServerTools *g_pServerTools = NULL;
 IServerPluginHelpers *g_pServerPluginHelpers = NULL;
+IClientEntityList *g_pClientEntityList = NULL;
 ICvar *g_pCVar = NULL;
 IBaseFileSystem *g_pFileSystem = NULL;
 

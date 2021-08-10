@@ -19,17 +19,31 @@
 
 #include "tools/tools.h"
 
-// Shared
-void *g_pCheckJumpButtonServer = NULL;
-void *g_pCheckJumpButtonClient = NULL;
+#include "libdasm/libdasm.h"
+
+#include <direct.h>
+#include <string>
+
+//-----------------------------------------------------------------------------
+
+static bool PLUGIN_LOADED = false;
+
+char g_szDirectory[FILENAME_MAX];
+const char *g_pszDirectory = g_szDirectory;
+
+std::string sInputsDirectory;
 
 const char *g_pszGameVersion = NULL;
 const wchar_t *g_pwcGameVersion = NULL;
 
 DWORD g_GameVersion = 0;
 
+//-----------------------------------------------------------------------------
+
 CLeft4TAS g_Left4TAS;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CLeft4TAS, IServerPluginCallbacks, "ISERVERPLUGINCALLBACKS003", g_Left4TAS);
+
+//-----------------------------------------------------------------------------
 
 void CheckCurrentMap(const char *pszMapName)
 {
@@ -52,6 +66,8 @@ void CheckCurrentMap(const char *pszMapName)
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 bool GetGameVersion()
 {
 	void *pVersion_String = LookupForString(L"engine.dll", "Version %s ");
@@ -72,9 +88,7 @@ bool GetGameVersion()
 			for (int i = 0; i < 7; ++i)
 			{
 				if (!(i % 2))
-				{
 					buffer[++shift] = g_pszGameVersion[i];
-				}
 			}
 
 			g_GameVersion = atol(buffer);
@@ -95,6 +109,8 @@ void CheckGameVersion()
 	}
 }
 
+//-----------------------------------------------------------------------------
+
 CLeft4TAS::CLeft4TAS()
 {
 }
@@ -108,17 +124,51 @@ bool CLeft4TAS::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameS
 	const char szVEngineServer[] = "VEngineServer022";
 	const char szVEngineClient[] = "VEngineClient013";
 	const char szEngineTrace[] = "EngineTraceServer003";
+	const char szEngineVGui[] = "VEngineVGui001";
 	const char szVDebugOverlay[] = "VDebugOverlay003";
 	const char szPlayerInfoManager[] = "PlayerInfoManager002";
 	const char szGameEventManager2[] = "GAMEEVENTSMANAGER002";
 	const char szServerTools[] = "VSERVERTOOLS001";
 	const char szServerPluginHelpers[] = "ISERVERPLUGINHELPERS001";
+	const char szClientEntityList[] = "VClientEntityList003";
 	const char szCvar[] = "VEngineCvar007";
 	const char szBaseFileSystem[] = "VBaseFileSystem012";
+
+	INSTRUCTION instruction;
+	std::string sDirectory;
+
+	if (!_getcwd(g_szDirectory, sizeof(g_szDirectory)))
+	{
+		Warning("[Left4TAS] Failed to get current directory lmao\n");
+		return false;
+	}
+
+	sDirectory = g_szDirectory;
+	sInputsDirectory = sDirectory + "\\left4dead2\\cfg\\left4tas\\";
+
+	if (!CreateDirectoryA(sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		Warning("[Left4TAS] Failed to create ../cfg/left4tas/ directory\n");
+		return false;
+	}
+
+	sInputsDirectory = sDirectory + "\\left4dead2\\cfg\\left4tas\\inputs\\";
+	
+	if (!CreateDirectoryA(sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		Warning("[Left4TAS] Failed to create ../cfg/left4tas/inputs/ directory\n");
+		return false;
+	}
 
 	if (!GetGameVersion())
 	{
 		FailedInit("GetGameVersion");
+		return false;
+	}
+
+	if (g_GameVersion < 2000 || g_GameVersion > 2155)
+	{
+		Warning("[Left4TAS] Game version not supported\n");
 		return false;
 	}
 
@@ -133,8 +183,13 @@ bool CLeft4TAS::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameS
 
 		if (pSpawnServer)
 		{
-			g_pServer = *reinterpret_cast<IServer **>(GetOffset(pSpawnServer, Offsets::Variables::CBaseServer__SpawnServer));
-			goto SERVER_SUCCESS;
+			get_instruction(&instruction, (BYTE *)GetOffset(pSpawnServer, Offsets::Variables::sv), MODE_32);
+
+			if (instruction.type == INSTRUCTION_TYPE_MOV && instruction.op1.type == OPERAND_TYPE_REGISTER && instruction.op2.type == OPERAND_TYPE_IMMEDIATE)
+			{
+				g_pServer = reinterpret_cast<IServer *>(instruction.op2.immediate);
+				goto SERVER_SUCCESS;
+			}
 		}
 	}
 
@@ -148,12 +203,20 @@ SERVER_SUCCESS:
 	if (clientDLL)
 	{
 		auto clientFactory = (CreateInterfaceFn)GetProcAddress(clientDLL, "CreateInterface");
+
 		g_pClient = reinterpret_cast<IBaseClientDLL *>(GetInterface(clientFactory, szClient));
+		g_pClientEntityList = reinterpret_cast<IClientEntityList *>(GetInterface(clientFactory, szClientEntityList));
 	}
 
 	if (!g_pClient)
 	{
 		FailedIFace("IBaseClientDLL");
+		return false;
+	}
+	
+	if (!g_pClientEntityList)
+	{
+		FailedIFace("IClientEntityList");
 		return false;
 	}
 
@@ -208,6 +271,14 @@ SERVER_SUCCESS:
 	if (!g_pEngineTrace)
 	{
 		FailedIFace("IEngineTrace");
+		return false;
+	}
+	
+	g_pEngineVGui = reinterpret_cast<IEngineVGui *>(GetInterface(interfaceFactory, szEngineVGui));
+
+	if (!g_pEngineVGui)
+	{
+		FailedIFace("IEngineVGui");
 		return false;
 	}
 	
@@ -280,15 +351,16 @@ SERVER_SUCCESS:
 	if (!InitClientModule())
 		Warning("[L4TAS] Client functions are unavailable\n");
 
-	else if (!InitVGUIModule())
+	if (!InitVGUIModule())
 		Warning("[L4TAS] VGUI functions are unavailable\n");
 
 	ConVar_Register();
 	
-	g_pEngineServer->ServerCommand("exec tas_plugin_load\n");
+	g_pEngineServer->ServerCommand("exec left4tas/tas_plugin_load\n");
 
-	Msg("[Left4TAS] Successfully loaded\n");
+	ConColorMsg({ g_bFailedInit ? 255 : 0, 255, 0, 255 }, g_bFailedInit ? "[Left4TAS] Loaded with limited features\n" : "[Left4TAS] Successfully loaded\n");
 
+	PLUGIN_LOADED = true;
 	return true;
 }
 
@@ -307,7 +379,8 @@ void CLeft4TAS::Unload(void)
 
 	delete[] g_pwcGameVersion;
 
-	Msg("[Left4TAS] Successfully unloaded\n");
+	if (PLUGIN_LOADED)
+		Msg("[Left4TAS] Successfully unloaded\n");
 }
 
 const char *CLeft4TAS::GetPluginDescription(void)

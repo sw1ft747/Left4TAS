@@ -4,6 +4,8 @@
 #include "timer.h"
 
 #include "../sdk.h"
+#include "../cvars.h"
+
 #include "misc.h"
 
 //-----------------------------------------------------------------------------
@@ -104,6 +106,11 @@ bool CTimer::SetSegmentTime(float flSegmentTime, float flSegmentPreciseTime)
 	return false;
 }
 
+float CTimer::GetSegmentTime(bool bPreciseTime /* = false */)
+{
+	return bPreciseTime ? m_flSegmentPreciseTime : m_flSegmentTime;
+}
+
 void CTimer::PrintTicks() const
 {
 	if (m_bTimerStarted || m_bTotalTimeProcessed)
@@ -114,7 +121,7 @@ void CTimer::PrintTicks() const
 			nTicks = gpGlobals->tickcount - m_nStartTick;
 		
 		sprintf(buffer, "\x05> \x04Total ticks: \x03%lu", nTicks);
-		ClientPrint(-1, 3, buffer);
+		ClientPrint(-1, timer_print_to_chat.GetBool() ? 3 : 2, buffer);
 	}
 }
 
@@ -125,6 +132,7 @@ void CTimer::PrintTime() const
 		char buffer_time[64];
 		char buffer_preciseTime[64];
 
+		int print_dest = timer_print_to_chat.GetBool() ? 3 : 2;
 		float flTime, flTotalTime, flPreciseTime, flTotalPreciseTime;
 
 		flTime = flTotalTime = m_flTotalTime;
@@ -143,7 +151,7 @@ void CTimer::PrintTime() const
 			GetTimeInTimerFormat(buffer_time, ARRAYSIZE(buffer_time), &flTotalTime, true);
 			sprintf(buffer, "\x05> \x04Total time: \x03%.3f \x05%s", flTotalTime, buffer_time);
 
-			ClientPrint(-1, 3, buffer);
+			ClientPrint(-1, print_dest, buffer);
 
 			if (!IsPreciseTimeCorrupted())
 			{
@@ -152,26 +160,26 @@ void CTimer::PrintTime() const
 				GetPreciseTimeInTimerFormat(buffer_preciseTime, ARRAYSIZE(buffer_preciseTime), &flTotalPreciseTime, true);
 				sprintf(buffer, "\x04Precise total time: \x03%.3f \x05%s", flTotalPreciseTime, buffer_preciseTime);
 
-				ClientPrint(-1, 3, buffer);
+				ClientPrint(-1, print_dest, buffer);
 			}
 		}
 
 		GetTimeInTimerFormat(buffer_time, ARRAYSIZE(buffer_time), &flTime, false);
 		sprintf(buffer, "\x05> \x04Segment time: \x03%.3f \x05%s", flTime, buffer_time);
 
-		ClientPrint(-1, 3, buffer);
+		ClientPrint(-1, print_dest, buffer);
 
 		if (!IsPreciseTimeCorrupted())
 		{
 			GetPreciseTimeInTimerFormat(buffer_preciseTime, ARRAYSIZE(buffer_preciseTime), &flPreciseTime, false);
 			sprintf(buffer, "\x04Precise time: \x03%.3f \x05%s", flPreciseTime, buffer_preciseTime);
 
-			ClientPrint(-1, 3, buffer);
+			ClientPrint(-1, print_dest, buffer);
 		}
 	}
 }
 
-float CTimer::GetTime(bool bPreciseTime = false) const
+float CTimer::GetTime(bool bPreciseTime /* = false */) const
 {
 	if (!m_bTimerStarted && !m_bTotalTimeProcessed)
 		return 0.0f;

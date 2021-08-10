@@ -96,3 +96,31 @@ int CVTableHook::TotalFunctions() const
 {
 	return m_nFunctions;
 }
+
+void *CVTableHook::HookFunction(void *pBaseClass, void *pHookFunction, const int nIndex)
+{
+	DWORD dwProtection;
+	DWORD *pVTable = *static_cast<DWORD **>(pBaseClass);
+
+	void *pOriginalFunction = (void *)pVTable[nIndex];
+
+	VirtualProtect(pVTable + nIndex, sizeof(void *), PAGE_EXECUTE_READWRITE, &dwProtection);
+
+	pVTable[nIndex] = (DWORD)pHookFunction;
+
+	VirtualProtect(pVTable + nIndex, sizeof(void *), dwProtection, &dwProtection);
+
+	return pOriginalFunction;
+}
+
+void CVTableHook::UnhookFunction(void *pBaseClass, void *pOriginalFunction, const int nIndex)
+{
+	DWORD dwProtection;
+	DWORD *pVTable = *static_cast<DWORD **>(pBaseClass);
+
+	VirtualProtect(pVTable + nIndex, sizeof(void *), PAGE_EXECUTE_READWRITE, &dwProtection);
+
+	pVTable[nIndex] = (DWORD)pOriginalFunction;
+
+	VirtualProtect(pVTable + nIndex, sizeof(void *), dwProtection, &dwProtection);
+}

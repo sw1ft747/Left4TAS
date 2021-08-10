@@ -22,6 +22,9 @@
     <Filter Include="libdasm">
       <UniqueIdentifier>{033f5582-86a2-4a17-bc6e-723563157f88}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Left4TAS\Structs">
+      <UniqueIdentifier>{0bb5de9e-83d8-4cd1-a244-895b131a01ac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="left4tas.cpp">
@@ -57,16 +60,10 @@
     <ClCompile Include="modules\vstdlib.cpp">
       <Filter>Left4TAS\Modules</Filter>
     </ClCompile>
-    <ClCompile Include="tools\autojump.cpp">
-      <Filter>Left4TAS\Tools</Filter>
-    </ClCompile>
     <ClCompile Include="tools\netpropmanager.cpp">
       <Filter>Left4TAS\Tools</Filter>
     </ClCompile>
     <ClCompile Include="tools\recvpropmanager.cpp">
-      <Filter>Left4TAS\Tools</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\strafestuff.cpp">
       <Filter>Left4TAS\Tools</Filter>
     </ClCompile>
     <ClCompile Include="libdasm\libdasm.c">
@@ -106,6 +103,15 @@
       <Filter>Left4TAS</Filter>
     </ClCompile>
     <ClCompile Include="tools\simple_trigger.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\strafe.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\random.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\input_manager.cpp">
       <Filter>Left4TAS\Tools</Filter>
     </ClCompile>
   </ItemGroup>
@@ -158,14 +164,8 @@
     <ClInclude Include="modules\vstdlib.h">
       <Filter>Left4TAS\Modules</Filter>
     </ClInclude>
-    <ClInclude Include="tools\autojump.h">
-      <Filter>Left4TAS\Tools</Filter>
-    </ClInclude>
     <ClInclude Include="utils\strafe_utils.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="tools\strafestuff.h">
-      <Filter>Left4TAS\Tools</Filter>
     </ClInclude>
     <ClInclude Include="tools\netpropmanager.h">
       <Filter>Left4TAS\Tools</Filter>
@@ -213,6 +213,27 @@
       <Filter>Left4TAS</Filter>
     </ClInclude>
     <ClInclude Include="tools\simple_trigger.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\strafe.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\cl_splitscreen.h">
+      <Filter>Left4TAS\Structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\inputdata_t.h">
+      <Filter>Left4TAS\Structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\cmd.h">
+      <Filter>Left4TAS\Structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\functors.h">
+      <Filter>Left4TAS\Structs</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\random.h">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\input_manager.h">
       <Filter>Left4TAS\Tools</Filter>
     </ClInclude>
   </ItemGroup>

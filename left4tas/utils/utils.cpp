@@ -3,6 +3,8 @@
 
 #include "utils.h"
 
+bool g_bFailedInit = false;
+
 void *GetInterface(CreateInterfaceFn interfaceFactory, const char *pszInterfaceVersion)
 {
 	void *pInterface = NULL;

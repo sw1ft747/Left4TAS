@@ -15,11 +15,12 @@ public:
 	void OnPreciseTimeCorrupted();
 
 	bool SetSegmentTime(float flSegmentTime, float flSegmentPreciseTime);
+	float GetSegmentTime(bool bPreciseTime = false);
 
 	void PrintTicks() const;
 	void PrintTime() const;
 
-	float GetTime(bool bPreciseTime) const;
+	float GetTime(bool bPreciseTime = false) const;
 	bool GetTimeInTimerFormat(char *buff, size_t bufferSize, float *calcTime, bool bReturnTotalTime) const;
 	bool GetPreciseTimeInTimerFormat(char *buff, size_t bufferSize, float *calcTime, bool bReturnTotalTime) const;
 

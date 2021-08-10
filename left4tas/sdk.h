@@ -10,6 +10,8 @@
 #include "iserver.h"
 #include "cdll_int.h"
 #include "filesystem.h"
+#include "ienginevgui.h"
+#include "icliententitylist.h"
 #include "toolframework/itoolentity.h"
 #include "game/server/iplayerinfo.h"
 #include "engine/IEngineTrace.h"

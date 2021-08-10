@@ -2,6 +2,7 @@
 // Receive Properties Manager
 
 #include "../sdk.h"
+#include "../utils/utils.h"
 
 #include "recvpropmanager.h"
 #include "icliententity.h"
@@ -82,7 +83,12 @@ int CRecvPropManager::GetPropOffset(const char *pszClassname, const char *pszPro
 
 inline int CRecvPropManager::GetPropOffset(IClientEntity *pEntity, const char *pszPropName)
 {
-	return CRecvPropManager::GetOffset(pEntity->GetClientClass()->m_pRecvTable, pszPropName);
+	IClientNetworkable *pNetworkable = pEntity->GetClientNetworkable();
+
+	if (!pNetworkable)
+		return 0;
+
+	return CRecvPropManager::GetOffset(GetVTableFunction<ClientClass *(__thiscall *)(void *)>(pNetworkable, 1)(pNetworkable)->m_pRecvTable, pszPropName); // Fix SDK
 }
 
 void CRecvPropManager::DumpDataTableInFile(RecvTable *pRecvTable, int nDeep, FILE *file, int nOffset)

@@ -1,16 +1,18 @@
 // C++
 // VGUI Module
 
-#include <Windows.h>
-
 #include "vgui.h"
 #include "utils.h"
 #include "client.h"
 
+#include "../structs/cl_splitscreen.h"
+
 #include "../tools/timer.h"
 #include "../prop_offsets.h"
 #include "../offsets.h"
-#include "vtable_hook.h"
+#include "../patterns.h"
+
+#include "signature_scanner.h"
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
@@ -23,6 +25,9 @@ Color g_HUDColor(200, 200, 200, 255);
 IPanel *g_pPanel = NULL;
 IScheme *g_pScheme = NULL;
 CSurface *g_pSurface = NULL;
+ISchemeManager *g_pSchemeManager = NULL;
+
+HFont *g_pSurfaceFont = 0;
 
 HFont g_surfaceFont = 0;
 HFont g_surfaceFont2 = 0;
@@ -35,19 +40,13 @@ class C_BasePlayer;
 extern C_BasePlayer **s_pLocalPlayer;
 extern const wchar_t *g_pwcGameVersion;
 extern const char *g_szPluginVersion;
-extern bhop_info g_bhopInfo;
 
 //-----------------------------------------------------------------------------
-// Hooks
+// Functions
 //-----------------------------------------------------------------------------
 
-VTABLE_HOOK(IPanel_Hook);
-
-//-----------------------------------------------------------------------------
-// Original functions
-//-----------------------------------------------------------------------------
-
-PaintTraverseFn PaintTraverse_Original = NULL;
+StartDrawingFn StartDrawing = NULL;
+FinishDrawingFn FinishDrawing = NULL;
 
 //-----------------------------------------------------------------------------
 // Hooks
@@ -55,167 +54,184 @@ PaintTraverseFn PaintTraverse_Original = NULL;
 
 void DrawHUD()
 {
-	int width, height;
-	wchar_t buffer[768];
-
-	int lineBreakHeight = vhud_line_break_height.GetInt();
-	C_BasePlayer *pLocal = s_pLocalPlayer[0];
-
-	g_pEngineClient->GetScreenSize(width, height);
-
-	surface()->DrawSetTextFont(g_surfaceFont);
-	surface()->DrawSetTextColor(g_HUDColor);
-	
-	// Game version
-	if (vhud_game_version.GetBool())
+	if (vhud_enable.GetBool() && g_pEngineClient->IsInGame())
 	{
-		surface()->DrawSetTextPos(width * vhud_game_version_x.GetFloat(), height * vhud_game_version_y.GetFloat());
-		surface()->DrawPrintText(g_pwcGameVersion, wcslen(g_pwcGameVersion));
-	}
-
-	// Plugin version
-	if (vhud_plugin_version.GetBool())
-	{
-		surface()->DrawSetTextPos(width * vhud_plugin_version_x.GetFloat(), height * vhud_plugin_version_y.GetFloat());
-		surface()->DrawPrintText(g_pwcPluginVersion, wcslen(g_pwcPluginVersion));
-	}
-
-	if (pLocal)
-	{
-		float flSpeed = 0.f, flSpeed2D = 0.f;
-		Vector vecVelocity = *reinterpret_cast<Vector *>(GetOffset(pLocal, RecvPropOffsets::m_vecVelocity));
-
-		if (vhud_velocity.GetBool() || vhud_speed.GetBool())
+		if (!surface()->__GetFontTall(g_surfaceFont))
 		{
-			flSpeed = vecVelocity.Length();
-			flSpeed2D = vecVelocity.Length2D();
+			if (g_surfaceFont = surface()->__CreateFont())
+				surface()->__SetFontGlyphSet(g_surfaceFont, "Lucida-Console", 21, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
 		}
 
-		// View angles
-		if (vhud_angles.GetBool())
+		if (!surface()->__GetFontTall(g_surfaceFont2))
 		{
-			QAngle viewangles;
-			g_pEngineClient->GetViewAngles(viewangles);
-
-			int pitchWidth = static_cast<int>(width * vhud_angles_x.GetFloat());
-			int pitchHeight = static_cast<int>(height * vhud_angles_y.GetFloat());
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Pitch: %f", viewangles[PITCH]);
-
-			surface()->DrawSetTextPos(pitchWidth, pitchHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Yaw: %f", viewangles[YAW]);
-
-			surface()->DrawSetTextPos(pitchWidth, pitchHeight + lineBreakHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+			if (g_surfaceFont2 = surface()->__CreateFont())
+				surface()->__SetFontGlyphSet(g_surfaceFont2, "Lucida-Console", 35, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
 		}
 
-		// Velocity
-		if (vhud_velocity.GetBool())
+		int width, height;
+		wchar_t buffer[768];
+
+		int lineBreakHeight = vhud_line_break_height.GetInt();
+		C_BasePlayer *pLocal = NULL;
+
+		g_pEngineClient->GetScreenSize(width, height);
+
+		StartDrawing(surface());
+
+		surface()->DrawSetTextFont(g_surfaceFont);
+		surface()->DrawSetTextColor(g_HUDColor);
+
+		// Game version
+		if (vhud_game_version.GetBool())
 		{
-			int headerWidth = static_cast<int>(width * vhud_velocity_x.GetFloat());
-			int headerHeight = static_cast<int>(height * vhud_velocity_y.GetFloat());
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Velocity:");
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"X: %f", vecVelocity.x);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Y: %f", vecVelocity.y);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 2);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Z: %f", vecVelocity.z);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 3);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"XY: %f", flSpeed2D);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 4);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"XYZ: %f", flSpeed);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 5);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+			surface()->DrawSetTextPos(width * vhud_game_version_x.GetFloat(), height * vhud_game_version_y.GetFloat());
+			surface()->DrawPrintText(g_pwcGameVersion, wcslen(g_pwcGameVersion));
 		}
 
-		// Position
-		if (vhud_origin.GetBool())
+		// Plugin version
+		if (vhud_plugin_version.GetBool())
 		{
-			Vector vecOrigin = *reinterpret_cast<Vector *>(GetOffset(pLocal, RecvPropOffsets::m_vecOrigin));
-
-			int headerWidth = static_cast<int>(width * vhud_origin_x.GetFloat());
-			int headerHeight = static_cast<int>(height * vhud_origin_y.GetFloat());
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Origin:");
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"X: %f", vecOrigin.x);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Y: %f", vecOrigin.y);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 2);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-
-			swprintf(buffer, ARRAYSIZE(buffer), L"Z: %f", vecOrigin.z);
-
-			surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 3);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+			surface()->DrawSetTextPos(width * vhud_plugin_version_x.GetFloat(), height * vhud_plugin_version_y.GetFloat());
+			surface()->DrawPrintText(g_pwcPluginVersion, wcslen(g_pwcPluginVersion));
 		}
 
-		// Bunnyhop info
-		if (vhud_bhop_info.GetBool())
+		if (IS_VALID_SPLIT_SCREEN_SLOT(g_nForceUser) && (pLocal = s_pLocalPlayer[g_nForceUser]))
 		{
-			int jumpsWidth = static_cast<int>(width * vhud_bhop_info_x.GetFloat());
-			int jumpsHeight = static_cast<int>(height * vhud_bhop_info_y.GetFloat());
+			float flSpeed = 0.f, flSpeed2D = 0.f;
+			Vector vecVelocity = *reinterpret_cast<Vector *>(GetOffset(pLocal, RecvPropOffsets::m_vecVelocity));
 
-			swprintf(buffer, ARRAYSIZE(buffer), L"Jumps: %lu", g_bhopInfo.nJumps);
+			if (vhud_velocity.GetBool() || vhud_speed.GetBool())
+			{
+				flSpeed = vecVelocity.Length();
+				flSpeed2D = vecVelocity.Length2D();
+			}
 
-			surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+			// View angles
+			if (vhud_angles.GetBool())
+			{
+				QAngle viewangles;
+				GetViewAngles(g_nForceUser, viewangles);
 
-			swprintf(buffer, ARRAYSIZE(buffer), L"Speed loss: %f", g_bhopInfo.flSpeedLoss);
+				int pitchWidth = static_cast<int>(width * vhud_angles_x.GetFloat());
+				int pitchHeight = static_cast<int>(height * vhud_angles_y.GetFloat());
 
-			surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 2);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+				swprintf(buffer, ARRAYSIZE(buffer), L"Pitch: %f", viewangles[PITCH]);
 
-			swprintf(buffer, ARRAYSIZE(buffer), L"Percentage: %f %%", g_bhopInfo.flPercentage);
+				surface()->DrawSetTextPos(pitchWidth, pitchHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
 
-			surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 3);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
-		}
+				swprintf(buffer, ARRAYSIZE(buffer), L"Yaw: %f", viewangles[YAW]);
 
-		// Speed
-		if (vhud_speed.GetBool())
-		{
-			int speedWidth = static_cast<int>(width * vhud_speed_x.GetFloat());
-			int speedHeight = static_cast<int>(height * vhud_speed_y.GetFloat());
+				surface()->DrawSetTextPos(pitchWidth, pitchHeight + lineBreakHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+			}
 
-			surface()->DrawSetTextFont(g_surfaceFont2);
+			// Velocity
+			if (vhud_velocity.GetBool())
+			{
+				int headerWidth = static_cast<int>(width * vhud_velocity_x.GetFloat());
+				int headerHeight = static_cast<int>(height * vhud_velocity_y.GetFloat());
 
-			swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(flSpeed2D));
+				swprintf(buffer, ARRAYSIZE(buffer), L"Velocity:");
 
-			surface()->DrawSetTextPos(speedWidth, speedHeight);
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+				surface()->DrawSetTextPos(headerWidth, headerHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
 
-			swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(g_bhopInfo.flLastSpeed));
+				swprintf(buffer, ARRAYSIZE(buffer), L"X: %f", vecVelocity.x);
 
-			surface()->DrawSetTextPos(speedWidth, speedHeight + vhud_line_break_height2.GetFloat());
-			surface()->DrawPrintText(buffer, wcslen(buffer));
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Y: %f", vecVelocity.y);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 2);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Z: %f", vecVelocity.z);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 3);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"XY: %f", flSpeed2D);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 4);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"XYZ: %f", flSpeed);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 5);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+			}
+
+			// Position
+			if (vhud_origin.GetBool())
+			{
+				Vector vecOrigin = *reinterpret_cast<Vector *>(GetOffset(pLocal, RecvPropOffsets::m_vecOrigin));
+
+				int headerWidth = static_cast<int>(width * vhud_origin_x.GetFloat());
+				int headerHeight = static_cast<int>(height * vhud_origin_y.GetFloat());
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Origin:");
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"X: %f", vecOrigin.x);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Y: %f", vecOrigin.y);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 2);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Z: %f", vecOrigin.z);
+
+				surface()->DrawSetTextPos(headerWidth, headerHeight + lineBreakHeight * 3);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+			}
+
+			// Bunnyhop info
+			if (vhud_bhop_info.GetBool())
+			{
+				int jumpsWidth = static_cast<int>(width * vhud_bhop_info_x.GetFloat());
+				int jumpsHeight = static_cast<int>(height * vhud_bhop_info_y.GetFloat());
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Jumps: %lu", g_bhopInfo.nJumps);
+
+				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Speed loss: %f", g_bhopInfo.flSpeedLoss);
+
+				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 2);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"Percentage: %f %%", g_bhopInfo.flPercentage);
+
+				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 3);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+			}
+
+			// Speed
+			if (vhud_speed.GetBool())
+			{
+				int speedWidth = static_cast<int>(width * vhud_speed_x.GetFloat());
+				int speedHeight = static_cast<int>(height * vhud_speed_y.GetFloat());
+
+				surface()->DrawSetTextFont(g_surfaceFont2);
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(flSpeed2D));
+
+				surface()->DrawSetTextPos(speedWidth, speedHeight);
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+
+				swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(g_bhopInfo.flLastSpeed));
+
+				surface()->DrawSetTextPos(speedWidth, speedHeight + vhud_line_break_height2.GetFloat());
+				surface()->DrawPrintText(buffer, wcslen(buffer));
+			}
 		}
 
 		// Timer
@@ -243,26 +259,8 @@ void DrawHUD()
 				surface()->DrawPrintText(buffer, wcslen(buffer));
 			}
 		}
-	}
-}
 
-void __fastcall PaintTraverse_Hooked(void *thisptr, int edx, VPANEL vguiPanel, bool forceRepaint, bool allowForce)
-{
-	PaintTraverse_Original(thisptr, vguiPanel, forceRepaint, allowForce);
-
-	static VPANEL panel = 0;
-
-	if (panel == 0)
-	{
-		// const char *IPanel::GetName(VPANEL vguiPanel);
-		const char *pszPanelName = GetVTableFunction<const char *(__thiscall *)(void *, VPANEL)>(ipanel(), Offsets::Functions::IPanel__GetName)(ipanel(), vguiPanel);
-
-		if (!strcmp(pszPanelName, "MatSystemTopPanel"))
-			panel = vguiPanel;
-	}
-	else if (panel == vguiPanel && vhud_enable.GetBool() && g_pEngineClient->IsInGame() && g_pEngineClient->IsConnected())
-	{
-		DrawHUD();
+		FinishDrawing(surface());
 	}
 }
 
@@ -277,21 +275,22 @@ bool IsVGUIModuleInit()
 
 bool InitVGUIModule()
 {
+	if (!IsClientModuleInit())
+		return false;
+
 	const char szVGUI_Panel[] = "VGUI_Panel009";
 	const char szVGUI_Scheme[] = "VGUI_Scheme010";
 	const char szVGUI_Surface[] = "VGUI_Surface031";
 
-	HMODULE vgui2_DLL = GetModuleHandle(L"vgui2.dll");
+	HMODULE vgui2DLL = GetModuleHandle(L"vgui2.dll");
 	HMODULE vguimatsurfaceDLL = GetModuleHandle(L"vguimatsurface.dll");
 
-	ISchemeManager *pSchemeManager = NULL;
-
-	if (vgui2_DLL)
+	if (vgui2DLL)
 	{
-		auto vgui2Factory = (CreateInterfaceFn)GetProcAddress(vgui2_DLL, "CreateInterface");
+		auto vgui2Factory = (CreateInterfaceFn)GetProcAddress(vgui2DLL, "CreateInterface");
 
 		g_pPanel = reinterpret_cast<IPanel *>(GetInterface(vgui2Factory, szVGUI_Panel));
-		pSchemeManager = reinterpret_cast<ISchemeManager *>(GetInterface(vgui2Factory, szVGUI_Scheme));
+		g_pSchemeManager = reinterpret_cast<ISchemeManager *>(GetInterface(vgui2Factory, szVGUI_Scheme));
 	}
 	
 	if (vguimatsurfaceDLL)
@@ -300,13 +299,21 @@ bool InitVGUIModule()
 		g_pSurface = reinterpret_cast<CSurface *>(GetInterface(vguimatsurfaceFactory, szVGUI_Surface));
 	}
 
-	if (!pSchemeManager)
+#if 0
+	if (!g_pSchemeManager)
 	{
 		FailedIFace("ISchemeManager");
 		return false;
 	}
 
-	g_pScheme = pSchemeManager->GetIScheme(pSchemeManager->GetDefaultScheme());
+	g_pScheme = g_pSchemeManager->GetIScheme(g_pSchemeManager->GetDefaultScheme());
+
+	if (!g_pScheme)
+	{
+		FailedIFace("IScheme");
+		return false;
+	}
+#endif
 
 	if (!g_pPanel)
 	{
@@ -320,9 +327,19 @@ bool InitVGUIModule()
 		return false;
 	}
 
-	if (!g_pScheme)
+	void *pStartDrawing = FIND_PATTERN(L"vguimatsurface.dll", Patterns::VGUIMatSurface::CMatSystemSurface__StartDrawing);
+
+	if (!pStartDrawing)
 	{
-		FailedIFace("IScheme");
+		FailedInit("CMatSystemSurface::StartDrawing");
+		return false;
+	}
+
+	void *pFinishDrawing = FIND_PATTERN(L"vguimatsurface.dll", Patterns::VGUIMatSurface::CMatSystemSurface__FinishDrawing);
+
+	if (!pFinishDrawing)
+	{
+		FailedInit("CMatSystemSurface::FinishDrawing");
 		return false;
 	}
 
@@ -339,8 +356,8 @@ bool InitVGUIModule()
 		return false;
 	}
 
-	HOOK_VTABLE(IPanel_Hook, g_pPanel, Offsets::Functions::IPanel__PaintTraverse + 1);
-	HOOK_VTABLE_FUNC(IPanel_Hook, PaintTraverse_Hooked, Offsets::Functions::IPanel__PaintTraverse, PaintTraverse_Original, PaintTraverseFn);
+	StartDrawing = (StartDrawingFn)GetOffset(pStartDrawing, Offsets::Functions::CMatSystemSurface__StartDrawing);
+	FinishDrawing = (FinishDrawingFn)GetOffset(pFinishDrawing, Offsets::Functions::CMatSystemSurface__FinishDrawing);
 
 	g_pwcPluginVersion = CStringToWideCString(g_szPluginVersion);
 
@@ -352,9 +369,6 @@ void ReleaseVGUIModule()
 {
 	if (!__INITIALIZED__)
 		return;
-
-	UNHOOK_VTABLE_FUNC(IPanel_Hook, Offsets::Functions::IPanel__PaintTraverse);
-	REMOVE_VTABLE_HOOK(IPanel_Hook);
 }
 
 //-----------------------------------------------------------------------------
