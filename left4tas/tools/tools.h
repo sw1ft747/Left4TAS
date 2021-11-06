@@ -49,5 +49,4 @@ inline void InitTools()
 
 inline void ReleaseTools()
 {
-	
 }

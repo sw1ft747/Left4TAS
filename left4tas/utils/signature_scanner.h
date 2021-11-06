@@ -1,4 +1,4 @@
-// C++
+
 // Signature Scanner
 
 #pragma once

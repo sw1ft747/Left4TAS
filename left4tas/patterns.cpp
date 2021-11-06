@@ -18,7 +18,7 @@ namespace Patterns
 
 	namespace Client
 	{
-		PATTERN(CCSModeManager__Init, "68 ? ? ? ? 8D 4D DC E8 ? ? ? ? E8 ? ? ? ? 8D 4D DC 89 04 B5 ? ? ? ? E8 D6 2C E8 ? ? ? ? 02 7C C0");
+		PATTERN(CCSModeManager__Init, "68 ? ? ? ? 8D 4D DC E8 ? ? ? ? E8 ? ? ? ? 8D 4D DC 89 04 B5 ? ? ? ? E8 ? ? ? ? 46 83 FE 02 7C");
 
 		PATTERN(C_BasePlayer__CheckForLocalPlayer, "55 8B EC 56 57 8B 7D 08 8B F1 83 FF FF 74 ? 8B 0D");
 

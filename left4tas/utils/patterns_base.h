@@ -1,4 +1,4 @@
-// C++
+
 // Patterns
 
 #pragma once

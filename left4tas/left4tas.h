@@ -8,7 +8,7 @@
 
 #include "sdk.h"
 
-#define PLUGIN_VER "1.1.0"
+#define PLUGIN_VER "1.1.1"
 
 // Solve incorrect linking
 int (WINAPIV *__vsnprintf)(char *, size_t, const char *, va_list) = _vsnprintf;

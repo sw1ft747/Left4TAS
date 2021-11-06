@@ -317,11 +317,8 @@ bool InitVScriptModule()
 
 	g_pScriptVM = *s_ScriptVM;
 
-	INIT_HOOK(VScriptInit_Hook, pVScriptServerInit, VScriptServerInit_Hooked);
-	INIT_HOOK(VScriptTerm_Hook, pVScriptServerTerm, VScriptServerTerm_Hooked);
-
-	HOOK_FUNC(VScriptInit_Hook, VScriptServerInit_Original, VScriptServerInitFn);
-	HOOK_FUNC(VScriptTerm_Hook, VScriptServerTerm_Original, VScriptServerTermFn);
+	HOOK_FUNCTION(VScriptInit_Hook, pVScriptServerInit, VScriptServerInit_Hooked, VScriptServerInit_Original, VScriptServerInitFn);
+	HOOK_FUNCTION(VScriptTerm_Hook, pVScriptServerTerm, VScriptServerTerm_Hooked, VScriptServerTerm_Original, VScriptServerTermFn);
 
 	if (g_pScriptVM) // already on the map, connect the plugin with VScripts
 		InitVScriptBridge();
@@ -337,9 +334,6 @@ void ReleaseVScriptModule()
 
 	TermVScriptBridge();
 
-	UNHOOK_FUNC(VScriptInit_Hook);
-	UNHOOK_FUNC(VScriptTerm_Hook);
-
-	REMOVE_HOOK(VScriptInit_Hook);
-	REMOVE_HOOK(VScriptTerm_Hook);
+	UNHOOK_FUNCTION(VScriptInit_Hook);
+	UNHOOK_FUNCTION(VScriptTerm_Hook);
 }

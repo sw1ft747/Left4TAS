@@ -166,13 +166,9 @@ bool InitEngineModule()
 	Cbuf_AddText = (Cbuf_AddTextFn)pCbuf_AddText;
 	Cbuf_Execute = (Cbuf_ExecuteFn)pCbuf_Execute;
 
-	INIT_HOOK(SetPaused_Hook, GetVTableFunction(g_pServer, Offsets::Functions::IServer__SetPaused), SetPaused_Hooked);
-	INIT_HOOK(Host_NewGame_Hook, pHost_NewGame, Host_NewGame_Hooked);
-	INIT_HOOK(Host_Changelevel_Hook, pHost_Changelevel, Host_Changelevel_Hooked);
-
-	HOOK_FUNC(SetPaused_Hook, SetPaused_Original, SetPausedFn);
-	HOOK_FUNC(Host_NewGame_Hook, Host_NewGame_Original, Host_NewGameFn);
-	HOOK_FUNC(Host_Changelevel_Hook, Host_Changelevel_Original, Host_ChangelevelFn);
+	HOOK_FUNCTION(SetPaused_Hook, GetVTableFunction(g_pServer, Offsets::Functions::IServer__SetPaused), SetPaused_Hooked, SetPaused_Original, SetPausedFn);
+	HOOK_FUNCTION(Host_NewGame_Hook, pHost_NewGame, Host_NewGame_Hooked, Host_NewGame_Original, Host_NewGameFn);
+	HOOK_FUNCTION(Host_Changelevel_Hook, pHost_Changelevel, Host_Changelevel_Hooked, Host_Changelevel_Original, Host_ChangelevelFn);
 
 	HOOK_VTABLE(IEngineVGuiInternal_Hook, g_pEngineVGui, Offsets::Functions::IEngineVGuiInternal__Paint + 1);
 
@@ -187,13 +183,9 @@ void ReleaseEngineModule()
 	if (!__INITIALIZED__)
 		return;
 
-	UNHOOK_FUNC(SetPaused_Hook);
-	UNHOOK_FUNC(Host_NewGame_Hook);
-	UNHOOK_FUNC(Host_Changelevel_Hook);
-
-	REMOVE_HOOK(SetPaused_Hook);
-	REMOVE_HOOK(Host_NewGame_Hook);
-	REMOVE_HOOK(Host_Changelevel_Hook);
+	UNHOOK_FUNCTION(SetPaused_Hook);
+	UNHOOK_FUNCTION(Host_NewGame_Hook);
+	UNHOOK_FUNCTION(Host_Changelevel_Hook);
 
 	UNHOOK_VTABLE_FUNC(IEngineVGuiInternal_Hook, Offsets::Functions::IEngineVGuiInternal__Paint);
 

@@ -8,6 +8,11 @@ CDetour::CDetour() : m_pOriginalFunction(NULL), m_pDetourFunction(NULL), m_pOrig
 {
 }
 
+CDetour::~CDetour()
+{
+	Remove();
+}
+
 void CDetour::Init(void *pOriginalFunction, void *pDetourFunction, DWORD *dwReturnAddress)
 {
 	int nLength = 0;
@@ -66,17 +71,18 @@ void CDetour::Init(void *pOriginalFunction, void *pDetourFunction, const DWORD n
 void CDetour::Remove()
 {
 	if (m_pOriginalBytes)
-		delete m_pOriginalBytes;
+		delete[] m_pOriginalBytes;
 
 	if (m_pPatchedBytes)
-		delete m_pPatchedBytes;
+		delete[] m_pPatchedBytes;
 
 	m_pOriginalBytes = m_pPatchedBytes = NULL;
+	m_nLength = 0;
 }
 
 bool CDetour::HookFunction()
 {
-	if (m_pOriginalBytes == NULL || m_pPatchedBytes == NULL)
+	if (!m_nLength)
 		return false;
 
 	DWORD dwProtection;
@@ -92,7 +98,7 @@ bool CDetour::HookFunction()
 
 bool CDetour::UnhookFunction()
 {
-	if (m_pOriginalBytes == NULL || m_pPatchedBytes == NULL)
+	if (!m_nLength)
 		return false;
 
 	DWORD dwProtection;

@@ -773,21 +773,13 @@ bool InitClientModule()
 		CVTableHook::HookFunction(g_pClientMode[1], IClientMode__CreateMove_Hooked, Offsets::Functions::IClientMode__CreateMove);
 	}
 
-	// Init hooks for trampoline
-	INIT_HOOK(CCSModeManager__Init_Hook, pCCSModeManager__Init, CCSModeManager__Init_Hooked);
-	//INIT_HOOK(GetButtonBits_Hook, pGetButtonBits, GetButtonBits_Hooked);
-	INIT_HOOK(CreateMove_Hook, pCreateMove, CreateMove_Hooked);
-	INIT_HOOK(ControllerMove_Hook, pControllerMove, ControllerMove_Hooked);
-	INIT_HOOK(AdjustAngles_Hook, pAdjustAngles, AdjustAngles_Hooked);
-	INIT_HOOK(CheckJumpButtonClient_Hook, pCheckJumpButtonClient, CheckJumpButtonClient_Hooked);
-
-	// Hook functions with trampoline method
-	HOOK_FUNC(CCSModeManager__Init_Hook, CCSModeManager__Init_Original, CCSModeManager__InitFn);
-	//HOOK_FUNC(GetButtonBits_Hook, GetButtonBits_Original, GetButtonBitsFn);
-	HOOK_FUNC(CreateMove_Hook, CreateMove_Original, CreateMoveFn);
-	HOOK_FUNC(ControllerMove_Hook, ControllerMove_Original, ControllerMoveFn);
-	HOOK_FUNC(AdjustAngles_Hook, AdjustAngles_Original, AdjustAnglesFn);
-	HOOK_FUNC(CheckJumpButtonClient_Hook, CheckJumpButtonClient_Original, CheckJumpButtonClientFn);
+	// Trampoline hook
+	HOOK_FUNCTION(CCSModeManager__Init_Hook, pCCSModeManager__Init, CCSModeManager__Init_Hooked, CCSModeManager__Init_Original, CCSModeManager__InitFn);
+	//HOOK_FUNCTION(GetButtonBits_Hook, pGetButtonBits, GetButtonBits_Hooked, GetButtonBits_Original, GetButtonBitsFn);
+	HOOK_FUNCTION(CreateMove_Hook, pCreateMove, CreateMove_Hooked, CreateMove_Original, CreateMoveFn);
+	HOOK_FUNCTION(ControllerMove_Hook, pControllerMove, ControllerMove_Hooked, ControllerMove_Original, ControllerMoveFn);
+	HOOK_FUNCTION(AdjustAngles_Hook, pAdjustAngles, AdjustAngles_Hooked, AdjustAngles_Original, AdjustAnglesFn);
+	HOOK_FUNCTION(CheckJumpButtonClient_Hook, pCheckJumpButtonClient, CheckJumpButtonClient_Hooked, CheckJumpButtonClient_Original, CheckJumpButtonClientFn);
 
 	// Hook vtable
 	HOOK_VTABLE_AUTOGUESS(ISplitScreen_Hook, splitscreen);
@@ -814,20 +806,12 @@ void ReleaseClientModule()
 	}
 
 	// Unhook functions
-	UNHOOK_FUNC(CCSModeManager__Init_Hook);
-	//UNHOOK_FUNC(GetButtonBits_Hook);
-	UNHOOK_FUNC(CreateMove_Hook);
-	UNHOOK_FUNC(ControllerMove_Hook);
-	UNHOOK_FUNC(AdjustAngles_Hook);
-	UNHOOK_FUNC(CheckJumpButtonClient_Hook);
-
-	// Remove hooks
-	REMOVE_HOOK(GetButtonBits_Hook);
-	//REMOVE_HOOK(CCSModeManager__Init_Hook);
-	REMOVE_HOOK(CreateMove_Hook);
-	REMOVE_HOOK(ControllerMove_Hook);
-	REMOVE_HOOK(AdjustAngles_Hook);
-	REMOVE_HOOK(CheckJumpButtonClient_Hook);
+	UNHOOK_FUNCTION(CCSModeManager__Init_Hook);
+	//UNHOOK_FUNCTION(GetButtonBits_Hook);
+	UNHOOK_FUNCTION(CreateMove_Hook);
+	UNHOOK_FUNCTION(ControllerMove_Hook);
+	UNHOOK_FUNCTION(AdjustAngles_Hook);
+	UNHOOK_FUNCTION(CheckJumpButtonClient_Hook);
 
 	// Unhook vtable functions
 	UNHOOK_VTABLE_FUNC(ISplitScreen_Hook, Offsets::Functions::ISplitScreen__AddSplitScreenUser);
@@ -1434,7 +1418,5 @@ ConVar tas_setpitch("tas_setpitch", "0", FCVAR_RELEASE, "Set the Pitch angle", O
 ConVar tas_setyaw("tas_setyaw", "0", FCVAR_RELEASE, "Set the Yaw angle", OnSetAngle);
 
 ConVar tas_setanglespeed("tas_setanglespeed", "360", FCVAR_RELEASE, "Speed of setting angles when using tas_setpitch/tas_setyaw");
-
-ConVar tas_im_tp("tas_im_tp", "1", FCVAR_RELEASE, "Teleport player to beginning position");
 
 ConVar ss_forceuser("ss_forceuser", "0", FCVAR_RELEASE, "Process all splitscreen players");

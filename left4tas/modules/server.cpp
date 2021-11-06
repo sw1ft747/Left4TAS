@@ -624,33 +624,19 @@ bool InitServerModule()
 	NetPropOffsets::m_angEyeAnglesYaw = NetProps.GetPropOffset("CCSPlayer", "m_angEyeAngles[1]");
 	NetPropOffsets::m_hMyWeapons = NetProps.GetPropOffset("CBasePlayer", "m_hMyWeapons");
 
-	// Init hooks for trampoline
-	INIT_HOOK(PlayerRunCommand_Hook, pPlayerRunCommand, PlayerRunCommand_Hooked);
-	INIT_HOOK(CheckJumpButtonServer_Hook, pCheckJumpButtonServer, CheckJumpButtonServer_Hooked);
-	INIT_HOOK(CDirectorSessionManager__FireGameEvent_Hook, pDirectorSessionManager__FireGameEvent, CDirectorSessionManager__FireGameEvent_Hooked);
-	INIT_HOOK(RestoreTransitionedEntities_Hook, pRestoreTransitionedEntities, RestoreTransitionedEntities_Hooked);
-	INIT_HOOK(TeamStartTouchIsValid_Hook, pTeamStartTouchIsValid, TeamStartTouchIsValid_Hooked);
-	INIT_HOOK(RestartRound_Hook, pRestartRound, RestartRound_Hooked);
-	INIT_HOOK(UnfreezeTeam_Hook, pUnfreezeTeam, UnfreezeTeam_Hooked);
-	INIT_HOOK(OnStartIntro_Hook, pOnStartIntro, OnStartIntro_Hooked);
-	INIT_HOOK(OnFinishIntro_Hook, pOnFinishIntro, OnFinishIntro_Hooked);
-	INIT_HOOK(OnBeginTransition_Hook, pOnBeginTransition, OnBeginTransition_Hooked);
-	INIT_HOOK(OnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions, OnFinaleEscapeForceSurvivorPositions_Hooked);
-	INIT_HOOK(DirectorOnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions2, DirectorOnFinaleEscapeForceSurvivorPositions_Hooked);
-
-	// Hook functions
-	HOOK_FUNC(PlayerRunCommand_Hook, PlayerRunCommand_Original, PlayerRunCommandFn);
-	HOOK_FUNC(CheckJumpButtonServer_Hook, CheckJumpButtonServer_Original, CheckJumpButtonServerFn);
-	HOOK_FUNC(CDirectorSessionManager__FireGameEvent_Hook, CDirectorSessionManager__FireGameEvent_Original, CDirectorSessionManager__FireGameEventFn);
-	HOOK_FUNC(RestoreTransitionedEntities_Hook, RestoreTransitionedEntities_Original, RestoreTransitionedEntitiesFn);
-	HOOK_FUNC(TeamStartTouchIsValid_Hook, TeamStartTouchIsValid_Original, TeamStartTouchIsValidFn);
-	HOOK_FUNC(RestartRound_Hook, RestartRound_Original, RestartRoundFn);
-	HOOK_FUNC(UnfreezeTeam_Hook, UnfreezeTeam_Original, UnfreezeTeamFn);
-	HOOK_FUNC(OnStartIntro_Hook, OnStartIntro_Original, OnStartIntroFn);
-	HOOK_FUNC(OnFinishIntro_Hook, OnFinishIntro_Original, OnFinishIntroFn);
-	HOOK_FUNC(OnBeginTransition_Hook, OnBeginTransition_Original, OnBeginTransitionFn);
-	HOOK_FUNC(OnFinaleEscapeForceSurvivorPositions_Hook, OnFinaleEscapeForceSurvivorPositions_Original, OnFinaleEscapeForceSurvivorPositionsFn);
-	HOOK_FUNC(DirectorOnFinaleEscapeForceSurvivorPositions_Hook, DirectorOnFinaleEscapeForceSurvivorPositions_Original, DirectorOnFinaleEscapeForceSurvivorPositionsFn);
+	// Trampoline hook
+	HOOK_FUNCTION(PlayerRunCommand_Hook, pPlayerRunCommand, PlayerRunCommand_Hooked, PlayerRunCommand_Original, PlayerRunCommandFn);
+	HOOK_FUNCTION(CheckJumpButtonServer_Hook, pCheckJumpButtonServer, CheckJumpButtonServer_Hooked, CheckJumpButtonServer_Original, CheckJumpButtonServerFn);
+	HOOK_FUNCTION(CDirectorSessionManager__FireGameEvent_Hook, pDirectorSessionManager__FireGameEvent, CDirectorSessionManager__FireGameEvent_Hooked, CDirectorSessionManager__FireGameEvent_Original, CDirectorSessionManager__FireGameEventFn);
+	HOOK_FUNCTION(RestoreTransitionedEntities_Hook, pRestoreTransitionedEntities, RestoreTransitionedEntities_Hooked, RestoreTransitionedEntities_Original, RestoreTransitionedEntitiesFn);
+	HOOK_FUNCTION(TeamStartTouchIsValid_Hook, pTeamStartTouchIsValid, TeamStartTouchIsValid_Hooked, TeamStartTouchIsValid_Original, TeamStartTouchIsValidFn);
+	HOOK_FUNCTION(RestartRound_Hook, pRestartRound, RestartRound_Hooked, RestartRound_Original, RestartRoundFn);
+	HOOK_FUNCTION(UnfreezeTeam_Hook, pUnfreezeTeam, UnfreezeTeam_Hooked, UnfreezeTeam_Original, UnfreezeTeamFn);
+	HOOK_FUNCTION(OnStartIntro_Hook, pOnStartIntro, OnStartIntro_Hooked, OnStartIntro_Original, OnStartIntroFn);
+	HOOK_FUNCTION(OnFinishIntro_Hook, pOnFinishIntro, OnFinishIntro_Hooked, OnFinishIntro_Original, OnFinishIntroFn);
+	HOOK_FUNCTION(OnBeginTransition_Hook, pOnBeginTransition, OnBeginTransition_Hooked, OnBeginTransition_Original, OnBeginTransitionFn);
+	HOOK_FUNCTION(OnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions, OnFinaleEscapeForceSurvivorPositions_Hooked, OnFinaleEscapeForceSurvivorPositions_Original, OnFinaleEscapeForceSurvivorPositionsFn);
+	HOOK_FUNCTION(DirectorOnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions2, DirectorOnFinaleEscapeForceSurvivorPositions_Hooked, DirectorOnFinaleEscapeForceSurvivorPositions_Original, DirectorOnFinaleEscapeForceSurvivorPositionsFn);
 
 	__INITIALIZED__ = true;
 	return true;
@@ -664,31 +650,18 @@ void ReleaseServerModule()
 	// Reset class member: FnChangeCB_t m_fnChangeCallback
 	*reinterpret_cast<DWORD *>(GetOffset(host_timescale, 0x44)) = NULL;
 
-	UNHOOK_FUNC(PlayerRunCommand_Hook);
-	UNHOOK_FUNC(CheckJumpButtonServer_Hook);
-	UNHOOK_FUNC(CDirectorSessionManager__FireGameEvent_Hook);
-	UNHOOK_FUNC(RestoreTransitionedEntities_Hook);
-	UNHOOK_FUNC(TeamStartTouchIsValid_Hook);
-	UNHOOK_FUNC(RestartRound_Hook);
-	UNHOOK_FUNC(UnfreezeTeam_Hook);
-	UNHOOK_FUNC(OnStartIntro_Hook);
-	UNHOOK_FUNC(OnFinishIntro_Hook);
-	UNHOOK_FUNC(OnBeginTransition_Hook);
-	UNHOOK_FUNC(OnFinaleEscapeForceSurvivorPositions_Hook);
-	UNHOOK_FUNC(DirectorOnFinaleEscapeForceSurvivorPositions_Hook);
-
-	REMOVE_HOOK(PlayerRunCommand_Hook);
-	REMOVE_HOOK(CheckJumpButtonServer_Hook);
-	REMOVE_HOOK(CDirectorSessionManager__FireGameEvent_Hook);
-	REMOVE_HOOK(RestoreTransitionedEntities_Hook);
-	REMOVE_HOOK(TeamStartTouchIsValid_Hook);
-	REMOVE_HOOK(RestartRound_Hook);
-	REMOVE_HOOK(UnfreezeTeam_Hook);
-	REMOVE_HOOK(OnStartIntro_Hook);
-	REMOVE_HOOK(OnFinishIntro_Hook);
-	REMOVE_HOOK(OnBeginTransition_Hook);
-	REMOVE_HOOK(OnFinaleEscapeForceSurvivorPositions_Hook);
-	REMOVE_HOOK(DirectorOnFinaleEscapeForceSurvivorPositions_Hook);
+	UNHOOK_FUNCTION(PlayerRunCommand_Hook);
+	UNHOOK_FUNCTION(CheckJumpButtonServer_Hook);
+	UNHOOK_FUNCTION(CDirectorSessionManager__FireGameEvent_Hook);
+	UNHOOK_FUNCTION(RestoreTransitionedEntities_Hook);
+	UNHOOK_FUNCTION(TeamStartTouchIsValid_Hook);
+	UNHOOK_FUNCTION(RestartRound_Hook);
+	UNHOOK_FUNCTION(UnfreezeTeam_Hook);
+	UNHOOK_FUNCTION(OnStartIntro_Hook);
+	UNHOOK_FUNCTION(OnFinishIntro_Hook);
+	UNHOOK_FUNCTION(OnBeginTransition_Hook);
+	UNHOOK_FUNCTION(OnFinaleEscapeForceSurvivorPositions_Hook);
+	UNHOOK_FUNCTION(DirectorOnFinaleEscapeForceSurvivorPositions_Hook);
 }
 
 //-----------------------------------------------------------------------------
@@ -914,6 +887,7 @@ ConVar tas_autoexec_configs("tas_autoexec_configs", "1", FCVAR_RELEASE, "Autoexe
 ConVar tas_autorun_vscripts("tas_autorun_vscripts", "1", FCVAR_RELEASE, "Autorun left4tas.nut file before round will start");
 ConVar tas_autojump("tas_autojump", "1", FCVAR_REPLICATED | FCVAR_RELEASE, "Player automatically re-jumps while holding jump button");
 ConVar tas_timescale("tas_timescale", "1.0", FCVAR_CHEAT | FCVAR_RELEASE | FCVAR_REPLICATED, "Set server's timescale", OnConVarChange);
+ConVar tas_im_tp("tas_im_tp", "1", FCVAR_RELEASE, "Teleport player to beginning position");
 
 ConVar category_no_director("category_no_director", "0", FCVAR_CHEAT | FCVAR_RELEASE, "No Director category", OnCategoryChange);
 ConVar category_no_survivor_bots("category_no_survivor_bots", "0", FCVAR_CHEAT | FCVAR_RELEASE, "No Survivor Bots category:\n- Modes:\n\t0 - disable\n\t1 - one player\n\t2 - splitscreen", OnCategoryChange);

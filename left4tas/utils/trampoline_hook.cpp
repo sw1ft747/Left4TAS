@@ -1,4 +1,4 @@
-// C++
+
 // Trampoline Hook
 
 #include "trampoline_hook.h"
@@ -6,6 +6,11 @@
 
 CTrampoline::CTrampoline() : m_pOriginalFunction(NULL), m_pHookFunction(NULL), m_pTrampoline(NULL), m_pOriginalBytes(NULL), m_pPatchedBytes(NULL), m_nLength(0)
 {
+}
+
+CTrampoline::~CTrampoline()
+{
+	Remove();
 }
 
 void CTrampoline::Init(void *pOriginalFunction, void *pHookFunction)
@@ -32,7 +37,7 @@ void CTrampoline::Init(void *pOriginalFunction, void *pHookFunction)
 
 	m_nLength = nLength;
 
-	BYTE pCallBytes[5] = { 0xE9 };
+	static BYTE pCallBytes[5] = { 0xE9 };
 	DWORD nNOPs = nLength - 5;
 
 	*(PDWORD)(pCallBytes + 1) = (DWORD)pHookFunction - (DWORD)pOriginalFunction - 5;
@@ -46,10 +51,10 @@ void CTrampoline::Init(void *pOriginalFunction, void *pHookFunction)
 void CTrampoline::Remove()
 {
 	if (m_pOriginalBytes)
-		delete m_pOriginalBytes;
+		delete[] m_pOriginalBytes;
 
 	if (m_pPatchedBytes)
-		delete m_pPatchedBytes;
+		delete[] m_pPatchedBytes;
 
 	m_pOriginalBytes = m_pPatchedBytes = NULL;
 	m_nLength = 0;
@@ -60,7 +65,7 @@ bool CTrampoline::HookFunction()
 	if (m_nLength)
 	{
 		DWORD dwProtection;
-		BYTE pCallBytes[5] = { 0xE9 };
+		static BYTE pCallBytes[5] = { 0xE9 };
 
 		m_pTrampoline = NULL;
 		m_pTrampoline = VirtualAlloc(NULL, m_nLength + 5, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);

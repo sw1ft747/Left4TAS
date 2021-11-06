@@ -1,10 +1,15 @@
-// C++
+
 // VTable Hook
 
 #include "vtable_hook.h"
 
 CVTableHook::CVTableHook() : m_pBaseClass(NULL), m_pVTable(NULL), m_pVTableOriginal(NULL), m_nFunctions(0)
 {
+}
+
+CVTableHook::~CVTableHook()
+{
+	Remove();
 }
 
 void CVTableHook::Init(void *pBaseClass, const int nFunctions)
@@ -53,6 +58,11 @@ void CVTableHook::Remove()
 	delete[] m_pVTableOriginal;
 
 	m_pVTableOriginal = NULL;
+}
+
+void *CVTableHook::GetVTable() const
+{
+	return m_pVTableOriginal;
 }
 
 void *CVTableHook::GetFunction(const int nIndex) const

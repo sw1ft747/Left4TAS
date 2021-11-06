@@ -1,4 +1,4 @@
-// C++
+
 // Patcher
 
 #include "patcher.h"
@@ -7,10 +7,15 @@ CPatcher::CPatcher() : m_pAddress(NULL), m_pOriginalBytes(NULL), m_pPatchedBytes
 {
 }
 
+CPatcher::~CPatcher()
+{
+	Remove();
+}
+
 void CPatcher::Init(void *pAddress, void *pPatchedBytes, const int nPatchLength)
 {
-	m_pOriginalBytes = (PBYTE)calloc(nPatchLength, sizeof(BYTE));
-	m_pPatchedBytes = (PBYTE)calloc(nPatchLength, sizeof(BYTE));
+	m_pOriginalBytes = new BYTE[nPatchLength];
+	m_pPatchedBytes = new BYTE[nPatchLength];
 
 	if (m_pOriginalBytes == NULL || m_pPatchedBytes == NULL)
 		return;
@@ -25,17 +30,18 @@ void CPatcher::Init(void *pAddress, void *pPatchedBytes, const int nPatchLength)
 void CPatcher::Remove()
 {
 	if (m_pOriginalBytes)
-		delete m_pOriginalBytes;
+		delete[] m_pOriginalBytes;
 
 	if (m_pPatchedBytes)
-		delete m_pPatchedBytes;
+		delete[] m_pPatchedBytes;
 
 	m_pOriginalBytes = m_pPatchedBytes = NULL;
+	m_nPatchLength = 0;
 }
 
 bool CPatcher::Patch()
 {
-	if (m_pOriginalBytes == NULL || m_pPatchedBytes == NULL)
+	if (!m_nPatchLength)
 		return false;
 
 	DWORD dwProtection;
@@ -51,7 +57,7 @@ bool CPatcher::Patch()
 
 bool CPatcher::Unpatch()
 {
-	if (m_pOriginalBytes == NULL || m_pPatchedBytes == NULL)
+	if (!m_nPatchLength)
 		return false;
 
 	DWORD dwProtection;
