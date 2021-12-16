@@ -1,4 +1,3 @@
-
 // Trampoline Hook
 
 #pragma once

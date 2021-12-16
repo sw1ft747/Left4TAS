@@ -1,4 +1,3 @@
-// C++
 // Server Module
 
 #include "vscript.h"
@@ -13,7 +12,9 @@
 #include "../tools/netpropmanager.h"
 #include "../tools/input_manager.h"
 
-#include "../structs/cl_splitscreen.h"
+#include "../game/cl_splitscreen.h"
+#include "../game/inputdata_t.h"
+
 #include "game/shared/igamemovement.h"
 #include "igameevents.h"
 
@@ -21,6 +22,8 @@
 #include "signature_scanner.h"
 #include "utils.h"
 #include "usercmd.h"
+
+#include "../sdk.h"
 
 #include "server.h"
 #include "client.h"
@@ -31,18 +34,29 @@
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-enum ServerCallbacks
-{
-	CB_ROUND_RESTART = 0,
-	CB_MAP_LOADED,
-	CB_INTRO_FINISHED,
-	CB_SERVER_TRANSITION_FINISHED,
-	CB_TRANSITION_FINISHED,
-	CB_TIMER_STARTED,
-	CB_TIMER_STOPPED
-};
+typedef CBaseEntity *(__thiscall *FindEntityByClassnameFn)(void *, CBaseEntity *, const char *);
+typedef CBaseEntity *(__thiscall *FindEntityByClassnameFastFn)(void *, CBaseEntity *, string_t);
+
+typedef void (__thiscall *PlayerRunCommandFn)(CBasePlayer *, CUserCmd *, IMoveHelper *);
+typedef bool (__thiscall *CheckJumpButtonServerFn)(void *);
+
+typedef void (__thiscall *CDirectorSessionManager__FireGameEventFn)(void *, IGameEvent *);
+typedef void (__cdecl *RestoreTransitionedEntitiesFn)();
+
+typedef bool (__thiscall *TeamStartTouchIsValidFn)(void *, void *);
+typedef void (__thiscall *RestartRoundFn)(void *);
+
+typedef void (__thiscall *UnfreezeTeamFn)(void *);
+
+typedef void (__thiscall *OnStartIntroFn)(void *);
+typedef void (__thiscall *OnFinishIntroFn)(void *);
+typedef void (__thiscall *OnBeginTransitionFn)(void *, bool);
+
+typedef void (__thiscall *OnFinaleEscapeForceSurvivorPositionsFn)(void *, inputdata_t &);
+typedef void (__thiscall *DirectorOnFinaleEscapeForceSurvivorPositionsFn)(void *, CUtlVector<CTerrorPlayer *, CUtlMemory<CTerrorPlayer *, int>> &);
 
 //-----------------------------------------------------------------------------
+// Imports
 //-----------------------------------------------------------------------------
 
 extern ICvar *g_pCVar;
@@ -52,28 +66,31 @@ extern IVEngineServer *g_pEngineServer;
 extern IServerTools *g_pServerTools;
 extern IServer *g_pServer;
 
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-static bool __INITIALIZED__ = false;
-static CBaseEntity *s_pTriggerFinale = NULL;
-
-bool is_c5m5 = false;
-bool is_c13m4 = false;
-bool g_bAutoJumpServer[MAXCLIENTS + 1];
-
-bool g_bInTransition = false;
-bool g_bSegmentFinished = false;
-
-CGlobalEntityList *gEntList = NULL;
-ConVar *host_timescale = NULL;
-
 void OnTimeScaleChange(IConVar *var, const char *pOldValue, float flOldValue);
 void OnConVarChange(IConVar *var, const char *pOldValue, float flOldValue);
 void OnCategoryChange(IConVar *var, const char *pOldValue, float flOldValue);
 
 //-----------------------------------------------------------------------------
-// Init hooks
+// Vars
+//-----------------------------------------------------------------------------
+
+CServer g_Server;
+
+static CBaseEntity *s_pTriggerFinale = NULL;
+
+CGlobalEntityList *gEntList = NULL;
+
+bool is_c5m5 = false;
+bool is_c13m4 = false;
+
+//-----------------------------------------------------------------------------
+// Native cvars
+//-----------------------------------------------------------------------------
+
+ConVar *host_timescale = NULL;
+
+//-----------------------------------------------------------------------------
+// Declare hooks
 //-----------------------------------------------------------------------------
 
 TRAMPOLINE_HOOK(PlayerRunCommand_Hook);
@@ -120,164 +137,36 @@ OnFinaleEscapeForceSurvivorPositionsFn OnFinaleEscapeForceSurvivorPositions_Orig
 DirectorOnFinaleEscapeForceSurvivorPositionsFn DirectorOnFinaleEscapeForceSurvivorPositions_Original = NULL;
 
 //-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-inline CBaseEntity *CGlobalEntityList::FindEntityByClassname(CBaseEntity *pStartEntity, const char *szName)
-{
-	return ::FindEntityByClassname(this, pStartEntity, szName);
-}
-
-inline CBaseEntity *CGlobalEntityList::FindEntityByClassnameFast(CBaseEntity *pStartEntity, const char *szName)
-{
-	return ::FindEntityByClassnameFast(this, pStartEntity, castable_string_t(szName));
-}
-
-// Don't remove '__declspec(noinline)' otherwise 'OnFinishIntro_Hooked' will crash your game
-void __declspec(noinline) FireServerCallback(ServerCallbacks type, bool bTimerStoppedOutsidePlugin = false)
-{
-	g_bSegmentFinished = false;
-
-	if (tas_autoexec_configs.GetBool())
-	{
-		switch (type)
-		{
-		case CB_ROUND_RESTART:
-			g_pEngineServer->ServerCommand("exec left4tas/tas_round_start\n");
-			break;
-
-		case CB_MAP_LOADED:
-			g_pEngineServer->ServerCommand("exec left4tas/tas_map_load\n");
-			break;
-
-		case CB_INTRO_FINISHED:
-			g_pEngineServer->ServerCommand("exec left4tas/tas_intro_finish\n");
-			break;
-
-		case CB_SERVER_TRANSITION_FINISHED:
-			g_pEngineServer->ServerCommand("exec left4tas/tas_server_transition\n");
-			break;
-
-		case CB_TRANSITION_FINISHED:
-			g_pEngineServer->ServerCommand("exec left4tas/tas_map_transition\n");
-			break;
-
-		case CB_TIMER_STOPPED:
-			if (bTimerStoppedOutsidePlugin)
-				goto EXECUTE_VSCRIPT_CALLBACK;
-
-			g_pEngineServer->ServerCommand("exec left4tas/tas_segment_finish\n");
-			break;
-		}
-
-		g_pEngineServer->ServerExecute();
-	}
-
-EXECUTE_VSCRIPT_CALLBACK:
-	if (tas_vscript_callbacks.GetBool() && IsVScriptModuleInit())
-	{
-		HSCRIPT hCallbacksFunc = g_pScriptVM->LookupFunction("Left4TAS_Callbacks");
-
-		if (hCallbacksFunc)
-		{
-			// Crash when working with 'null' variable in script. Why?
-			if (g_pScriptVM->Call(hCallbacksFunc, NULL, true, NULL, static_cast<int>(type)) == SCRIPT_ERROR)
-				Warning("[L4TAS] Failed to call 'Left4TAS_Callbacks' function\n");
-		}
-	}
-}
-
-void server__tas_im_record(const char *pszFilename, int nPlayerIndex)
-{
-	IS_PLAYER_INDEX_VALID(nPlayerIndex)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(nPlayerIndex);
-
-		if (pPlayer)
-		{
-			float orientation[3][3];
-
-			orientation[1][0] = *reinterpret_cast<float *>(GetOffset(pPlayer, NetPropOffsets::m_angEyeAnglesPitch));
-			orientation[1][1] = *reinterpret_cast<float *>(GetOffset(pPlayer, NetPropOffsets::m_angEyeAnglesYaw));
-			orientation[1][2] = 0.0f;
-
-			*reinterpret_cast<Vector *>(orientation[0]) = *reinterpret_cast<Vector *>(GetOffset(pPlayer, NetPropOffsets::m_vecOrigin));
-			*reinterpret_cast<Vector *>(orientation[2]) = *reinterpret_cast<Vector *>(GetOffset(pPlayer, NetPropOffsets::m_vecVelocity));
-
-			g_InputManager.Record(pszFilename, &g_InputDataServer[nPlayerIndex], orientation);
-		}
-	}
-}
-
-void server__tas_im_play(const char *pszFilename, int nPlayerIndex)
-{
-	IS_PLAYER_INDEX_VALID(nPlayerIndex)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(nPlayerIndex);
-
-		if (pPlayer)
-		{
-			g_InputManager.Playback(pszFilename, &g_InputDataServer[nPlayerIndex]);
-
-			if (g_InputDataServer[nPlayerIndex].active && __UTIL_PlayerByIndex && tas_im_tp.GetBool())
-			{
-				Teleport((CBaseEntity *)pPlayer,
-							(Vector *)g_InputDataServer[nPlayerIndex].baseInfo.origin,
-							(QAngle *)g_InputDataServer[nPlayerIndex].baseInfo.viewangles,
-							(Vector *)g_InputDataServer[nPlayerIndex].baseInfo.velocity);
-			}
-		}
-	}
-}
-
-void server__tas_im_split(int nPlayerIndex)
-{
-	IS_PLAYER_INDEX_VALID(nPlayerIndex)
-		g_InputManager.Split(&g_InputDataServer[nPlayerIndex]);
-}
-
-void server__tas_im_stop(int nPlayerIndex)
-{
-	IS_PLAYER_INDEX_VALID(nPlayerIndex)
-		g_InputManager.Stop(&g_InputDataServer[nPlayerIndex]);
-}
-
-//-----------------------------------------------------------------------------
 // Hooks
 //-----------------------------------------------------------------------------
 
 void __fastcall PlayerRunCommand_Hooked(CBasePlayer *pPlayer, int edx, CUserCmd *pCmd, IMoveHelper *pMoveHelper)
 {
 	int nPlayerIndex = EntIndexOfBaseEntity((CBaseEntity *)pPlayer);
+	InputData *pInputData = g_InputManager.GetServerInputData(nPlayerIndex);
 
-	if (g_InputDataServer[nPlayerIndex].input)
+	if (pInputData->input)
 	{
-		if (g_InputDataServer[nPlayerIndex].recording)
+		if (pInputData->recording)
 		{
-			g_InputManager.SaveInput(&g_InputDataServer[nPlayerIndex], pCmd, false);
+			g_InputManager.SaveInput(pInputData, pCmd, false);
 		}
 		else
 		{
-			g_InputManager.ReadInput(&g_InputDataServer[nPlayerIndex], pCmd, pPlayer, false);
+			g_InputManager.ReadInput(pInputData, pCmd, pPlayer, false);
 			Teleport((CBaseEntity *)pPlayer, NULL, &pCmd->viewangles, NULL);
 		}
 
-		++g_InputDataServer[nPlayerIndex].frames;
+		++pInputData->frames;
 	}
 
 	PlayerRunCommand_Original(pPlayer, pCmd, pMoveHelper);
 }
 
-bool __fastcall CheckJumpButtonServer_Hooked(void *thisptr, int edx)
+bool __fastcall CheckJumpButtonServer_Hooked(IGameMovement *thisptr)
 {
-	CMoveData *mv = reinterpret_cast<CMoveData *>(((uintptr_t *)thisptr)[2]);
-	const int IN_JUMP = mv->m_nOldButtons & (1 << 1);
+	bool bJumped = g_Server.CheckJumpButton(thisptr);
 
-	if (tas_autojump.GetBool() && g_bAutoJumpServer[EntIndexOfBaseEntity((CBaseEntity *)((uintptr_t *)thisptr)[1])])
-		mv->m_nOldButtons &= ~IN_JUMP;
-
-	bool bJumped = CheckJumpButtonServer_Original(thisptr);
-
-	mv->m_nOldButtons |= IN_JUMP;
 	return bJumped;
 }
 
@@ -286,7 +175,7 @@ void __fastcall CDirectorSessionManager__FireGameEvent_Hooked(void *thisptr, int
 	CDirectorSessionManager__FireGameEvent_Original(thisptr, event);
 
 	// First player fully spawned, we can start the timer (another way?)
-	if (g_bInTransition && !strcmp("player_connect_full", event->GetName()))
+	if (g_Server.IsTransitioning() && !strcmp("player_connect_full", event->GetName()))
 	{
 		g_Timer.Reset();
 
@@ -295,10 +184,10 @@ void __fastcall CDirectorSessionManager__FireGameEvent_Hooked(void *thisptr, int
 			g_Timer.Start();
 
 		g_Timer.OnPreciseTimeCorrupted();
-		FireServerCallback(CB_TRANSITION_FINISHED);
+		g_Server.FireServerCallback(CB_TRANSITION_FINISHED);
 
-		g_bLevelChange = false;
-		g_bInTransition = false;
+		g_Engine.SetLevelChangeState(false);
+		g_Server.SetTransitionState(false);
 	}
 }
 
@@ -307,10 +196,10 @@ void __cdecl RestoreTransitionedEntities_Hooked()
 	RestoreTransitionedEntities_Original();
 
 	// Last server's transition action (restoration of saved items) was completed
-	// Purpose: create fake clients and let them control spawned survivor bots (probably game event 'player_connect_full' will fire for them, fix it)
+	// Purpose: create fake clients (maybe..) and let them control spawned survivor bots (probably game event 'player_connect_full' will fire for them, fix it)
 
-	if (g_bInTransition)
-		FireServerCallback(CB_SERVER_TRANSITION_FINISHED);
+	if (g_Server.IsTransitioning())
+		g_Server.FireServerCallback(CB_SERVER_TRANSITION_FINISHED);
 }
 
 bool __fastcall TeamStartTouchIsValid_Hooked(void *thisptr, int edx, void *pTrigger)
@@ -352,15 +241,15 @@ bool __fastcall TeamStartTouchIsValid_Hooked(void *thisptr, int edx, void *pTrig
 	return result;
 }
 
-void __fastcall RestartRound_Hooked(void *thisptr, int edx)
+void __fastcall RestartRound_Hooked(void *thisptr)
 {
-	if (IsVScriptModuleInit() && tas_autorun_vscripts.GetBool())
+	if (g_VScript.IsInitialized() && tas_autorun_vscripts.GetBool())
 		VScriptRunScript("left4tas");
 
 	RestartRound_Original(thisptr);
 
 	// Start timer
-	if (!g_bLevelChange)
+	if (!g_Engine.IsLevelChanging())
 	{
 		g_Timer.Reset();
 
@@ -368,14 +257,14 @@ void __fastcall RestartRound_Hooked(void *thisptr, int edx)
 			g_Timer.Start();
 
 		g_Timer.OnPreciseTimeCorrupted();
-		FireServerCallback(CB_ROUND_RESTART);
+		g_Server.FireServerCallback(CB_ROUND_RESTART);
 	}
 
 	s_pTriggerFinale = NULL;
 }
 
 // Called when load to the map
-void __fastcall UnfreezeTeam_Hooked(void *thisptr, int edx)
+void __fastcall UnfreezeTeam_Hooked(void *thisptr)
 {
 	UnfreezeTeam_Original(thisptr);
 
@@ -386,10 +275,10 @@ void __fastcall UnfreezeTeam_Hooked(void *thisptr, int edx)
 		g_Timer.Start();
 
 	g_Timer.OnPreciseTimeCorrupted();
-	FireServerCallback(CB_MAP_LOADED);
+	g_Server.FireServerCallback(CB_MAP_LOADED);
 }
 
-void __fastcall OnStartIntro_Hooked(void *thisptr, int edx)
+void __fastcall OnStartIntro_Hooked(void *thisptr)
 {
 	// Reset timer
 	if (timer_auto.GetBool())
@@ -398,7 +287,7 @@ void __fastcall OnStartIntro_Hooked(void *thisptr, int edx)
 	OnStartIntro_Original(thisptr);
 }
 
-void __fastcall OnFinishIntro_Hooked(void *thisptr, int edx)
+void __fastcall OnFinishIntro_Hooked(void *thisptr)
 {
 	// Start timer
 	if (timer_auto.GetBool())
@@ -407,14 +296,14 @@ void __fastcall OnFinishIntro_Hooked(void *thisptr, int edx)
 		g_Timer.Start();
 	}
 
-	FireServerCallback(CB_INTRO_FINISHED);
+	g_Server.FireServerCallback(CB_INTRO_FINISHED);
 
 	OnFinishIntro_Original(thisptr);
 }
 
 void __fastcall OnBeginTransition_Hooked(void *thisptr, int edx, bool bScenarioRestart)
 {
-	g_bInTransition = true;
+	g_Server.SetTransitionState(true);
 
 	if (timer_auto.GetBool())
 	{
@@ -427,7 +316,7 @@ void __fastcall OnBeginTransition_Hooked(void *thisptr, int edx, bool bScenarioR
 		g_Timer.SetSegmentTime(g_Timer.GetTime() + g_Timer.GetSegmentTime(), g_Timer.GetTime(true) + g_Timer.GetSegmentTime(true));
 	}
 
-	FireServerCallback(CB_TIMER_STOPPED);
+	g_Server.FireServerCallback(CB_TIMER_STOPPED);
 
 	OnBeginTransition_Original(thisptr, bScenarioRestart);
 }
@@ -436,8 +325,8 @@ void __fastcall OnFinaleEscapeForceSurvivorPositions_Hooked(void *thisptr, int e
 {
 	OnFinaleEscapeForceSurvivorPositions_Original(thisptr, inputData);
 
-	// c7m3's finale is spamming 'OnFinaleEscapeForceSurvivorPositions' input
-	if (!g_bSegmentFinished)
+	// c7m3's finale is spamming 'OnFinaleEscapeForceSurvivorPositions' output
+	if (!g_Server.IsSegmentFinished())
 	{
 		if (timer_auto.GetBool())
 		{
@@ -448,9 +337,8 @@ void __fastcall OnFinaleEscapeForceSurvivorPositions_Hooked(void *thisptr, int e
 			g_Timer.PrintTime();
 		}
 
-		FireServerCallback(CB_TIMER_STOPPED);
-
-		g_bSegmentFinished = true;
+		g_Server.FireServerCallback(CB_TIMER_STOPPED);
+		g_Server.SetSegmentFinishedState(true);
 	}
 
 	if (s_pTriggerFinale)
@@ -469,17 +357,165 @@ void __fastcall DirectorOnFinaleEscapeForceSurvivorPositions_Hooked(void *thispt
 }
 
 //-----------------------------------------------------------------------------
-// Init/release server-side module
+// CGlobalEntityList implementations
 //-----------------------------------------------------------------------------
 
-bool IsServerModuleInit()
+inline CBaseEntity *CGlobalEntityList::FindEntityByClassname(CBaseEntity *pStartEntity, const char *szName)
 {
-	return __INITIALIZED__;
+	return ::FindEntityByClassname(this, pStartEntity, szName);
 }
 
-bool InitServerModule()
+inline CBaseEntity *CGlobalEntityList::FindEntityByClassnameFast(CBaseEntity *pStartEntity, const char *szName)
 {
-	memset(g_bAutoJumpServer, true, sizeof(g_bAutoJumpServer));
+	return ::FindEntityByClassnameFast(this, pStartEntity, castable_string_t(szName));
+}
+
+//-----------------------------------------------------------------------------
+// Server-side functions for Input Manager
+//-----------------------------------------------------------------------------
+
+void server__tas_im_record(const char *pszFilename, int nPlayerIndex)
+{
+	IS_PLAYER_INDEX_VALID(nPlayerIndex)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(nPlayerIndex);
+
+		if (pPlayer)
+		{
+			float orientation[3][3];
+
+			orientation[1][0] = *reinterpret_cast<float *>(GetOffset(pPlayer, NetPropOffsets::m_angEyeAnglesPitch));
+			orientation[1][1] = *reinterpret_cast<float *>(GetOffset(pPlayer, NetPropOffsets::m_angEyeAnglesYaw));
+			orientation[1][2] = 0.0f;
+
+			*reinterpret_cast<Vector *>(orientation[0]) = *reinterpret_cast<Vector *>(GetOffset(pPlayer, NetPropOffsets::m_vecOrigin));
+			*reinterpret_cast<Vector *>(orientation[2]) = *reinterpret_cast<Vector *>(GetOffset(pPlayer, NetPropOffsets::m_vecVelocity));
+
+			g_InputManager.Record(pszFilename, g_InputManager.GetServerInputData(nPlayerIndex), orientation);
+		}
+	}
+}
+
+void server__tas_im_play(const char *pszFilename, int nPlayerIndex)
+{
+	IS_PLAYER_INDEX_VALID(nPlayerIndex)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(nPlayerIndex);
+		InputData *pInputData = g_InputManager.GetServerInputData(nPlayerIndex);
+
+		if (pPlayer)
+		{
+			g_InputManager.Playback(pszFilename, pInputData);
+
+			if (pInputData->active && UTIL_PlayerByIndex && tas_im_tp.GetBool())
+			{
+				Teleport((CBaseEntity *)pPlayer,
+							(Vector *)pInputData->baseInfo.origin,
+							(QAngle *)pInputData->baseInfo.viewangles,
+							(Vector *)pInputData->baseInfo.velocity);
+			}
+		}
+	}
+}
+
+void server__tas_im_split(int nPlayerIndex)
+{
+	IS_PLAYER_INDEX_VALID(nPlayerIndex)
+		g_InputManager.Split(g_InputManager.GetServerInputData(nPlayerIndex));
+}
+
+void server__tas_im_stop(int nPlayerIndex)
+{
+	IS_PLAYER_INDEX_VALID(nPlayerIndex)
+		g_InputManager.Stop(g_InputManager.GetServerInputData(nPlayerIndex));
+}
+
+//-----------------------------------------------------------------------------
+// Server module implementations
+//-----------------------------------------------------------------------------
+
+bool CServer::CheckJumpButton(IGameMovement *pGameMovement)
+{
+	CMoveData *mv = reinterpret_cast<CMoveData *>(((uintptr_t *)pGameMovement)[2]);
+	const int IN_JUMP = mv->m_nOldButtons & (1 << 1);
+
+	if (tas_autojump.GetBool() && m_bAutoJump[EntIndexOfBaseEntity((CBaseEntity *)((uintptr_t *)pGameMovement)[1])])
+		mv->m_nOldButtons &= ~IN_JUMP;
+
+	bool bJumped = CheckJumpButtonServer_Original(pGameMovement);
+
+	mv->m_nOldButtons |= IN_JUMP;
+	return bJumped;
+}
+
+// Keep this method not inlined otherwise 'OnFinishIntro_Hooked' will crash your game
+void __declspec(noinline) CServer::FireServerCallback(ServerCallbacks type, bool bTimerStoppedOutsidePlugin /* = false */)
+{
+	g_Server.SetSegmentFinishedState(false);
+
+	if (tas_autoexec_configs.GetBool())
+	{
+		switch (type)
+		{
+		case CB_ROUND_RESTART:
+			g_pEngineServer->ServerCommand("exec left4tas/tas_round_start\n");
+			break;
+
+		case CB_MAP_LOADED:
+			g_pEngineServer->ServerCommand("exec left4tas/tas_map_load\n");
+			break;
+
+		case CB_INTRO_FINISHED:
+			g_pEngineServer->ServerCommand("exec left4tas/tas_intro_finish\n");
+			break;
+
+		case CB_SERVER_TRANSITION_FINISHED:
+			g_pEngineServer->ServerCommand("exec left4tas/tas_server_transition\n");
+			break;
+
+		case CB_TRANSITION_FINISHED:
+			g_pEngineServer->ServerCommand("exec left4tas/tas_map_transition\n");
+			break;
+
+		case CB_TIMER_STOPPED:
+			if (bTimerStoppedOutsidePlugin)
+				goto EXECUTE_VSCRIPT_CALLBACK;
+
+			g_pEngineServer->ServerCommand("exec left4tas/tas_segment_finish\n");
+			break;
+		}
+
+		g_pEngineServer->ServerExecute();
+	}
+
+EXECUTE_VSCRIPT_CALLBACK:
+	if (tas_vscript_callbacks.GetBool() && g_VScript.IsInitialized())
+	{
+		HSCRIPT hCallbacksFunc = g_pScriptVM->LookupFunction("Left4TAS_Callbacks");
+
+		if (hCallbacksFunc)
+		{
+			// Game will when try to access to 'null' variable (for example, call a class method) in a script. Why?
+			if (g_pScriptVM->Call(hCallbacksFunc, NULL, true, NULL, static_cast<int>(type)) == SCRIPT_ERROR)
+				Warning("[L4TAS] Failed to call 'Left4TAS_Callbacks' function\n");
+		}
+	}
+}
+
+CServer::CServer() : m_bInitialized(false), m_bAutoJump()
+{
+	m_bInTransition = false;
+	m_bSegmentFinished = false;
+}
+
+bool CServer::IsInitialized() const
+{
+	return m_bInitialized;
+}
+
+bool CServer::Init()
+{
+	memset(m_bAutoJump, true, sizeof(m_bAutoJump));
 
 	void *pPlayerRunCommand = FIND_PATTERN(L"server.dll", Patterns::Server::CBasePlayer__PlayerRunCommand);
 
@@ -610,6 +646,7 @@ bool InitServerModule()
 	// mov ecx, offset gEntList
 	while (*++pOnStartIntro_gEntList != 0xB9) { }
 	
+	// Init global entity list
 	gEntList = *reinterpret_cast<CGlobalEntityList **>(++pOnStartIntro_gEntList);
 	FindEntityByClassname = (FindEntityByClassnameFn)pFindEntityByClassname;
 	FindEntityByClassnameFast = (FindEntityByClassnameFastFn)pFindEntityByClassnameFast;
@@ -638,14 +675,15 @@ bool InitServerModule()
 	HOOK_FUNCTION(OnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions, OnFinaleEscapeForceSurvivorPositions_Hooked, OnFinaleEscapeForceSurvivorPositions_Original, OnFinaleEscapeForceSurvivorPositionsFn);
 	HOOK_FUNCTION(DirectorOnFinaleEscapeForceSurvivorPositions_Hook, pOnFinaleEscapeForceSurvivorPositions2, DirectorOnFinaleEscapeForceSurvivorPositions_Hooked, DirectorOnFinaleEscapeForceSurvivorPositions_Original, DirectorOnFinaleEscapeForceSurvivorPositionsFn);
 
-	__INITIALIZED__ = true;
+	m_bInitialized = true;
 	return true;
 }
 
-void ReleaseServerModule()
+
+bool CServer::Release()
 {
-	if (!__INITIALIZED__)
-		return;
+	if (!m_bInitialized)
+		return false;
 
 	// Reset class member: FnChangeCB_t m_fnChangeCallback
 	*reinterpret_cast<DWORD *>(GetOffset(host_timescale, 0x44)) = NULL;
@@ -662,6 +700,8 @@ void ReleaseServerModule()
 	UNHOOK_FUNCTION(OnBeginTransition_Hook);
 	UNHOOK_FUNCTION(OnFinaleEscapeForceSurvivorPositions_Hook);
 	UNHOOK_FUNCTION(DirectorOnFinaleEscapeForceSurvivorPositions_Hook);
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -684,7 +724,7 @@ CON_COMMAND(autojump_enable, "Enable autojump for a specified player")
 		{
 			C_BasePlayer *pLocal = NULL;
 
-			if (pLocal = s_pLocalPlayer[i])
+			if (pLocal = g_Client.GetLocalPlayer(i))
 			{
 				int nLocalPlayerIndex = EntIndexOfBaseEntity((IClientEntity *)pLocal);
 
@@ -692,14 +732,14 @@ CON_COMMAND(autojump_enable, "Enable autojump for a specified player")
 				{
 					if (nIndex == nLocalPlayerIndex)
 					{
-						g_bAutoJumpClient[i] = true;
+						g_Client.EnableAutoJump(i);
 						break;
 					}
 				}
 			}
 		}
 
-		g_bAutoJumpServer[nIndex] = true;
+		g_Server.EnableAutoJump(nIndex);
 	}
 }
 
@@ -719,7 +759,7 @@ CON_COMMAND(autojump_disable, "Disable autojump for a specified player")
 		{
 			C_BasePlayer *pLocal = NULL;
 
-			if (pLocal = s_pLocalPlayer[i])
+			if (pLocal = g_Client.GetLocalPlayer(i))
 			{
 				int nLocalPlayerIndex = EntIndexOfBaseEntity((IClientEntity *)pLocal);
 
@@ -727,14 +767,14 @@ CON_COMMAND(autojump_disable, "Disable autojump for a specified player")
 				{
 					if (nIndex == nLocalPlayerIndex)
 					{
-						g_bAutoJumpClient[i] = false;
+						g_Client.DisableAutoJump(i);
 						break;
 					}
 				}
 			}
 		}
 
-		g_bAutoJumpServer[nIndex] = false;
+		g_Server.DisableAutoJump(nIndex);
 	}
 }
 
@@ -776,7 +816,7 @@ CON_COMMAND(tas_tp, "Teleport local client to the given position, optional: snap
 
 CON_COMMAND(tas_tp_player, "Teleport player to the given position, optional: snap eye angles")
 {
-	if (!__UTIL_PlayerByIndex)
+	if (!UTIL_PlayerByIndex)
 		return;
 
 	if (args.ArgC() < 5)
@@ -855,13 +895,13 @@ CON_COMMAND(timer_start, "Start the timer")
 	if (g_pServer->IsPaused())
 		g_Timer.OnPreciseTimeCorrupted();
 
-	FireServerCallback(CB_TIMER_STARTED, true);
+	g_Server.FireServerCallback(CB_TIMER_STARTED, true);
 }
 
 CON_COMMAND(timer_stop, "Stop the timer")
 {
 	g_Timer.Stop();
-	FireServerCallback(CB_TIMER_STOPPED, true);
+	g_Server.FireServerCallback(CB_TIMER_STOPPED, true);
 }
 
 CON_COMMAND(timer_reset, "Reset the timer")

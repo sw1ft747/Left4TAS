@@ -1,4 +1,3 @@
-// C++
 // Recipient Filter
 
 #pragma once

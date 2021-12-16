@@ -1,5 +1,4 @@
-// C++
-// Include SDK
+// Include L4D2 SDK
 
 #pragma once
 

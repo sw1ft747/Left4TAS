@@ -589,10 +589,15 @@ namespace Strafe
 				double normalizedDiff = NormalizeDeg(adjustedTarget - out.Yaw);
 				double additionAbs = std::min(static_cast<double>(strafedata.frame.VectorialIncrement), std::abs(normalizedDiff));
 
+			#pragma warning(push)
+			#pragma warning(disable: 4244)
+
 				if (std::abs(normalizedDiff) > strafedata.frame.VectorialSnap)
 					out.Yaw = adjustedTarget;
 				else
 					out.Yaw = out.Yaw + std::copysign(additionAbs, normalizedDiff);
+
+			#pragma warning(pop)
 			}
 
 			double thetaDeg = dummy.Yaw;

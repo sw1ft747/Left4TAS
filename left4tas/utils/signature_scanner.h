@@ -1,4 +1,3 @@
-
 // Signature Scanner
 
 #pragma once

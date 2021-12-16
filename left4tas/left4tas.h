@@ -1,4 +1,3 @@
-// C++
 // Left4TAS
 
 #pragma once
@@ -8,7 +7,8 @@
 
 #include "sdk.h"
 
-#define PLUGIN_VER "1.1.1"
+#define PLUGIN_VER "1.2.0"
+#define NO_GAMEEVENT_CALLBACKS
 
 // Solve incorrect linking
 int (WINAPIV *__vsnprintf)(char *, size_t, const char *, va_list) = _vsnprintf;
@@ -36,7 +36,11 @@ CGlobalVars *gpGlobals = NULL;
 
 const char *g_szPluginVersion = PLUGIN_VER;
 
-class CLeft4TAS : public IServerPluginCallbacks /*, public IGameEventListener2 */
+#ifndef NO_GAMEEVENT_CALLBACKS
+class CLeft4TAS : public IServerPluginCallbacks, public IGameEventListener2
+#else
+class CLeft4TAS : public IServerPluginCallbacks
+#endif
 {
 public:
 	CLeft4TAS();
@@ -61,15 +65,24 @@ public:
 	virtual PLUGIN_RESULT	NetworkIDValidated( const char *pszUserName, const char *pszNetworkID );
 	virtual void			OnQueryCvarValueFinished( QueryCvarCookie_t iCookie, edict_t *pPlayerEntity, EQueryCvarValueStatus eStatus, const char *pCvarName, const char *pCvarValue );
 
+#ifdef L4D2
 	// Version 3 of the interface
 	virtual void			OnEdictAllocated( edict_t *edict );
 	virtual void			OnEdictFreed( const edict_t *edict );
+#endif
 
-	/*
-
+#ifndef NO_GAMEEVENT_CALLBACKS
 	// IGameEventListener2 methods
 	virtual void			FireGameEvent( IGameEvent *event );
 	virtual int				GetEventDebugID( void );
+#endif
 
-	*/
+private:
+	bool InitDirectories();
+
+	bool GetGameVersion();
+	void CheckGameVersion();
+
+private:
+	bool m_bLoaded;
 };

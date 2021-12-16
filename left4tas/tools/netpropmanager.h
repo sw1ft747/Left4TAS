@@ -1,4 +1,3 @@
-// C++
 // Network Properties Manager
 
 #pragma once

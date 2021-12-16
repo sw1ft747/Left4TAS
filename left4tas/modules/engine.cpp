@@ -1,4 +1,3 @@
-// C++
 // Engine Module
 
 #include "../cvars.h"
@@ -19,22 +18,32 @@
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
+typedef void(__thiscall *SetPausedFn)(void *, bool);
+
+typedef bool(__cdecl *Host_NewGameFn)(char *, bool, bool, bool, const char *, const char *);
+typedef void(__cdecl *Host_ChangelevelFn)(bool, const char *, const char *);
+
+typedef void(__thiscall *PaintFn)(void *, PaintMode_t);
+
+//-----------------------------------------------------------------------------
+// Imports
+//-----------------------------------------------------------------------------
+
 extern IEngineVGui *g_pEngineVGui;
 extern IServer *g_pServer;
 extern ICvar *g_pCVar;
 
 //-----------------------------------------------------------------------------
+// Vars
 //-----------------------------------------------------------------------------
+
+CEngine g_Engine;
 
 static bool __INITIALIZED__ = false;
-static bool bForcePause = false;
-
-bool g_bLevelChange = false;
-
-void *g_pGetBaseLocalClient = NULL;
+static bool s_bForcePause = false;
 
 //-----------------------------------------------------------------------------
-// Init hooks
+// Declare hooks
 //-----------------------------------------------------------------------------
 
 TRAMPOLINE_HOOK(SetPaused_Hook);
@@ -55,9 +64,6 @@ Host_ChangelevelFn Host_Changelevel_Original = NULL;
 
 PaintFn Paint_Original = NULL;
 
-Cbuf_AddTextFn Cbuf_AddText = NULL;
-Cbuf_ExecuteFn Cbuf_Execute = NULL;
-
 //-----------------------------------------------------------------------------
 // Hooks
 //-----------------------------------------------------------------------------
@@ -66,25 +72,25 @@ void __fastcall SetPaused_Hooked(void *thisptr, int edx, bool paused)
 {
 	if (paused)
 	{
-		if (!bForcePause && prevent_pause.GetBool())
+		if (!s_bForcePause && prevent_pause.GetBool())
 			return;
 
 		g_Timer.OnPreciseTimeCorrupted();
 	}
 	else
 	{
-		if (!bForcePause && prevent_unpause.GetBool())
+		if (!s_bForcePause && prevent_unpause.GetBool())
 			return;
 	}
 
-	bForcePause = false;
+	s_bForcePause = false;
 	SetPaused_Original(thisptr, paused);
 }
 
 bool Host_NewGame_Hooked(char *mapName, bool loadGame, bool bBackgroundLevel, bool bSplitScreenConnect, const char *pszOldMap, const char *pszLandmark)
 {
-	g_bLevelChange = false;
-	g_bInTransition = false;
+	g_Engine.SetLevelChangeState(false);
+	g_Server.SetTransitionState(false);
 
 	g_Timer.Reset();
 
@@ -93,7 +99,7 @@ bool Host_NewGame_Hooked(char *mapName, bool loadGame, bool bBackgroundLevel, bo
 
 void Host_Changelevel_Hooked(bool loadfromsavedgame, const char *mapname, const char *start)
 {
-	g_bLevelChange = true;
+	g_Engine.SetLevelChangeState(true);
 
 	g_Timer.Reset();
 
@@ -102,26 +108,32 @@ void Host_Changelevel_Hooked(bool loadfromsavedgame, const char *mapname, const 
 
 void __fastcall Paint_Hooked(void *thisptr, int edx, PaintMode_t mode)
 {
-	if (g_bInSplitScreen)
+	if (g_Client.m_bInSplitScreen)
 		Paint_Original(thisptr, mode);
 
-	if (IsVGUIModuleInit() && mode == PAINT_UIPANELS)
-		DrawHUD();
+	if (g_VGUI.IsInitialized() && mode == PAINT_UIPANELS)
+		g_VGUI.DrawHUD();
 
-	if (!g_bInSplitScreen)
+	if (!g_Client.m_bInSplitScreen)
 		Paint_Original(thisptr, mode);
 }
 
 //-----------------------------------------------------------------------------
-// Init/release engine module
+// Engine module implementations
 //-----------------------------------------------------------------------------
 
-bool IsEngineModuleInit()
+CEngine::CEngine() : m_bInitialized(false), m_bLevelChange(false), m_pfnGetBaseLocalClient(NULL)
 {
-	return __INITIALIZED__;
+	Cbuf_AddText = NULL;
+	Cbuf_Execute = NULL;
 }
 
-bool InitEngineModule()
+bool CEngine::IsInitialized() const
+{
+	return m_bInitialized;
+}
+
+bool CEngine::Init()
 {
 	void *pHost_NewGame = FIND_PATTERN(L"engine.dll", Patterns::Engine::Host_NewGame);
 
@@ -155,9 +167,9 @@ bool InitEngineModule()
 		return false;
 	}
 
-	g_pGetBaseLocalClient = FIND_PATTERN(L"engine.dll", Patterns::Engine::GetBaseLocalClient);
+	m_pfnGetBaseLocalClient = FIND_PATTERN(L"engine.dll", Patterns::Engine::GetBaseLocalClient);
 
-	if (!g_pGetBaseLocalClient)
+	if (!m_pfnGetBaseLocalClient)
 	{
 		FailedInit("GetBaseLocalClient");
 		return false;
@@ -174,14 +186,14 @@ bool InitEngineModule()
 
 	HOOK_VTABLE_FUNC(IEngineVGuiInternal_Hook, Paint_Hooked, Offsets::Functions::IEngineVGuiInternal__Paint, Paint_Original, PaintFn);
 
-	__INITIALIZED__ = true;
+	m_bInitialized = true;
 	return true;
 }
 
-void ReleaseEngineModule()
+bool CEngine::Release()
 {
-	if (!__INITIALIZED__)
-		return;
+	if (!m_bInitialized)
+		return false;
 
 	UNHOOK_FUNCTION(SetPaused_Hook);
 	UNHOOK_FUNCTION(Host_NewGame_Hook);
@@ -190,6 +202,8 @@ void ReleaseEngineModule()
 	UNHOOK_VTABLE_FUNC(IEngineVGuiInternal_Hook, Offsets::Functions::IEngineVGuiInternal__Paint);
 
 	REMOVE_VTABLE_HOOK(IEngineVGuiInternal_Hook);
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -203,7 +217,7 @@ CON_COMMAND(force_pause, "Pause the game")
 	if (!sv_pausable)
 		sv_pausable = g_pCVar->FindVar("sv_pausable");
 
-	bForcePause = true;
+	s_bForcePause = true;
 
 	sv_pausable->SetValue(1);
 	g_pServer->SetPaused(true);
@@ -211,7 +225,7 @@ CON_COMMAND(force_pause, "Pause the game")
 
 CON_COMMAND(force_unpause, "Unpause the game")
 {
-	bForcePause = true;
+	s_bForcePause = true;
 	g_pServer->SetPaused(false);
 }
 

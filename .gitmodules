@@ -7,3 +7,7 @@
 	path = left4tas/libdasm
 	url = https://github.com/jtpereyda/libdasm.git
 	shallow = true
+[submodule "l4d-sdk"]
+	path = left4tas/l4d-sdk
+	url = https://github.com/alliedmodders/hl2sdk.git
+	branch = l4d

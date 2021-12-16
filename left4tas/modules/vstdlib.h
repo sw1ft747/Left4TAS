@@ -1,4 +1,3 @@
-// C++
 // VSTDLib Module
 
 #pragma once
@@ -8,11 +7,28 @@
 #include "../sdk.h"
 
 //-----------------------------------------------------------------------------
-// Controls
+// VSTDLib Module
 //-----------------------------------------------------------------------------
 
-bool IsVSTDLibModuleInit();
+class CVSTDLib
+{
+public:
+	CVSTDLib();
 
-bool InitVSTDLibModule();
+	bool Init();
+	bool Release();
 
-void ReleaseVSTDLibModule();
+	bool IsInitialized() const;
+
+public:
+	void SaveSeed(const char *pszFilename) const;
+	void SetSeed(const char *pszFilename);
+
+private:
+	const char *GetSeedFilePath(const char *pszFilename) const;
+
+private:
+	bool m_bInitialized;
+};
+
+extern CVSTDLib g_VSTDLib;

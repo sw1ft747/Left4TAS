@@ -1,4 +1,3 @@
-// C++
 // Receive Properties Manager
 
 #pragma once

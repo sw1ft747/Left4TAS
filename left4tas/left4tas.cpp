@@ -1,4 +1,3 @@
-// C++
 // Left4TAS
 
 #include "left4tas.h"
@@ -14,8 +13,10 @@
 #include "modules/client.h"
 #include "modules/server.h"
 #include "modules/vstdlib.h"
-#include "modules/vscript.h"
 #include "modules/vgui.h"
+#ifdef L4D2
+#include "modules/vscript.h"
+#endif
 
 #include "tools/tools.h"
 
@@ -25,50 +26,37 @@
 #include <string>
 
 //-----------------------------------------------------------------------------
+// Global Vars
+//-----------------------------------------------------------------------------
 
-static bool PLUGIN_LOADED = false;
-
-char g_szDirectory[FILENAME_MAX];
-const char *g_pszDirectory = g_szDirectory;
-
-std::string sInputsDirectory;
+DWORD g_GameVersion = 0;
 
 const char *g_pszGameVersion = NULL;
 const wchar_t *g_pwcGameVersion = NULL;
 
-DWORD g_GameVersion = 0;
+const char *g_pszDirectory = NULL;
 
+std::string g_sInputsDirectory;
+std::string g_sSeedsDirectory;
+
+//-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
 CLeft4TAS g_Left4TAS;
+
+#ifdef L4D
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CLeft4TAS, IServerPluginCallbacks, "ISERVERPLUGINCALLBACKS002", g_Left4TAS);
+#elif defined(L4D2)
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CLeft4TAS, IServerPluginCallbacks, "ISERVERPLUGINCALLBACKS003", g_Left4TAS);
+#else
+static_assert(false, "You forgot to expose singleton.");
+#endif
 
 //-----------------------------------------------------------------------------
-
-void CheckCurrentMap(const char *pszMapName)
-{
-	extern bool is_c5m5;
-	extern bool is_c13m4;
-
-	if (!strcmp(pszMapName, "c5m5_bridge"))
-	{
-		is_c5m5 = true;
-		is_c13m4 = false;
-	}
-	else if (!strcmp(pszMapName, "c13m4_cutthroatcreek"))
-	{
-		is_c5m5 = false;
-		is_c13m4 = true;
-	}
-	else
-	{
-		is_c13m4 = is_c5m5 = false;
-	}
-}
-
+// Find version of the game
 //-----------------------------------------------------------------------------
 
-bool GetGameVersion()
+bool CLeft4TAS::GetGameVersion()
 {
 	void *pVersion_String = LookupForString(L"engine.dll", "Version %s ");
 
@@ -99,19 +87,61 @@ bool GetGameVersion()
 	return false;
 }
 
-void CheckGameVersion()
-{
-	// Change offsets/signatures for different versions
+//-----------------------------------------------------------------------------
+// Change offsets/signatures for different versions
+//-----------------------------------------------------------------------------
 
+void CLeft4TAS::CheckGameVersion()
+{
+#ifdef L4D2
 	if (g_GameVersion == 2000)
 	{
 		Msg("Oldest version.. Is everything working?\n");
 	}
+#else
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
+// Create missing directories
+//-----------------------------------------------------------------------------
 
-CLeft4TAS::CLeft4TAS()
+bool CLeft4TAS::InitDirectories()
+{
+	std::string sDirectory = g_pszDirectory = g_pEngineClient->GetGameDirectory();
+	g_sInputsDirectory = sDirectory + "\\cfg\\left4tas\\";
+
+	if (!CreateDirectoryA(g_sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		Warning("[Left4TAS] Failed to create ../cfg/left4tas/ directory\n");
+		return false;
+	}
+
+	g_sInputsDirectory = sDirectory + "\\cfg\\left4tas\\inputs\\";
+
+	if (!CreateDirectoryA(g_sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		Warning("[Left4TAS] Failed to create ../cfg/left4tas/inputs/ directory\n");
+		return false;
+	}
+
+	g_sSeedsDirectory = sDirectory + "\\cfg\\left4tas\\seeds\\";
+
+	if (!CreateDirectoryA(g_sSeedsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+	{
+		Warning("[Left4TAS] Failed to create ../cfg/left4tas/seeds/ directory\n");
+		return false;
+	}
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Plugin implementations
+//-----------------------------------------------------------------------------
+
+CLeft4TAS::CLeft4TAS() : m_bLoaded(false)
 {
 }
 
@@ -135,45 +165,46 @@ bool CLeft4TAS::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameS
 	const char szBaseFileSystem[] = "VBaseFileSystem012";
 
 	INSTRUCTION instruction;
-	std::string sDirectory;
 
-	if (!_getcwd(g_szDirectory, sizeof(g_szDirectory)))
-	{
-		Warning("[Left4TAS] Failed to get current directory lmao\n");
-		return false;
-	}
-
-	sDirectory = g_szDirectory;
-	sInputsDirectory = sDirectory + "\\left4dead2\\cfg\\left4tas\\";
-
-	if (!CreateDirectoryA(sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
-	{
-		Warning("[Left4TAS] Failed to create ../cfg/left4tas/ directory\n");
-		return false;
-	}
-
-	sInputsDirectory = sDirectory + "\\left4dead2\\cfg\\left4tas\\inputs\\";
-	
-	if (!CreateDirectoryA(sInputsDirectory.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
-	{
-		Warning("[Left4TAS] Failed to create ../cfg/left4tas/inputs/ directory\n");
-		return false;
-	}
-
+	// Game version stuff
 	if (!GetGameVersion())
 	{
 		FailedInit("GetGameVersion");
 		return false;
 	}
 
+#ifdef L4D
+	if (g_GameVersion < 1000 || g_GameVersion >= 2000)
+#elif defined(L4D2)
 	if (g_GameVersion < 2000 || g_GameVersion > 2155)
+#else
+	if (true)
+#endif
 	{
 		Warning("[Left4TAS] Game version not supported\n");
 		return false;
 	}
 
+#ifdef L4D
+	ConColorMsg({ 0, 255, 0, 255 }, "[Left4TAS] Successfully loaded the dummy plugin\n");
+	return true;
+#endif
+
 	CheckGameVersion();
 
+	// Engine interface & directories stuff
+	g_pEngineClient = reinterpret_cast<IVEngineClient *>(GetInterface(interfaceFactory, szVEngineClient));
+
+	if (!g_pEngineClient)
+	{
+		FailedIFace("IVEngineClient");
+		return false;
+	}
+
+	if (!InitDirectories())
+		return false;
+
+	// Get interfaces
 	// Looking for the string used in CBaseServer::SpawnServer function
 	void *pSpawnServer_String = LookupForString(L"engine.dll", "Set up players");
 
@@ -188,7 +219,7 @@ bool CLeft4TAS::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameS
 			if (instruction.type == INSTRUCTION_TYPE_MOV && instruction.op1.type == OPERAND_TYPE_REGISTER && instruction.op2.type == OPERAND_TYPE_IMMEDIATE)
 			{
 				g_pServer = reinterpret_cast<IServer *>(instruction.op2.immediate);
-				goto SERVER_SUCCESS;
+				goto SERVER_IFACE_SUCCESS;
 			}
 		}
 	}
@@ -196,7 +227,7 @@ bool CLeft4TAS::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameS
 	FailedIFace("IServer");
 	return false;
 
-SERVER_SUCCESS:
+SERVER_IFACE_SUCCESS:
 
 	HMODULE clientDLL = GetModuleHandle(L"client.dll");
 
@@ -255,14 +286,6 @@ SERVER_SUCCESS:
 	if (!g_pEngineServer)
 	{
 		FailedIFace("IVEngineServer");
-		return false;
-	}
-	
-	g_pEngineClient = reinterpret_cast<IVEngineClient *>(GetInterface(interfaceFactory, szVEngineClient));
-
-	if (!g_pEngineClient)
-	{
-		FailedIFace("IVEngineClient");
 		return false;
 	}
 	
@@ -334,24 +357,28 @@ SERVER_SUCCESS:
 		return false;
 	}
 
+	// Initialize plugin modules
+
 	InitTools();
 
-	if (!InitVScriptModule())
+#ifdef L4D2 // ToDo: latest L4D1 versions can support VScripts (IScriptManager and IScriptVM interfaces are implemented)
+	if (!g_VScript.Init())
 		Warning("[L4TAS] VScript functions are unavailable\n");
+#endif
 
-	if (!InitVSTDLibModule())
+	if (!g_VSTDLib.Init())
 		Warning("[L4TAS] VSTDLib functions are unavailable\n");
 
-	if (!InitEngineModule())
+	if (!g_Engine.Init())
 		Warning("[L4TAS] Engine functions are unavailable\n");
 	
-	if (!InitServerModule())
+	if (!g_Server.Init())
 		Warning("[L4TAS] Server functions are unavailable\n");
 
-	if (!InitClientModule())
+	if (!g_Client.Init())
 		Warning("[L4TAS] Client functions are unavailable\n");
 
-	if (!InitVGUIModule())
+	if (!g_VGUI.Init())
 		Warning("[L4TAS] VGUI functions are unavailable\n");
 
 	ConVar_Register();
@@ -360,26 +387,35 @@ SERVER_SUCCESS:
 
 	ConColorMsg({ g_bFailedInit ? 255 : 0, 255, 0, 255 }, g_bFailedInit ? "[Left4TAS] Loaded with limited features\n" : "[Left4TAS] Successfully loaded\n");
 
-	PLUGIN_LOADED = true;
+	m_bLoaded = true;
 	return true;
 }
 
 void CLeft4TAS::Unload(void)
 {
-	ReleaseVScriptModule();
-	ReleaseVSTDLibModule();
-	ReleaseEngineModule();
-	ReleaseServerModule();
-	ReleaseClientModule();
-	ReleaseVGUIModule();
+#ifdef L4D
+	return;
+#endif
+
+#ifdef L4D2
+	g_VScript.Release();
+#endif
+
+	g_VSTDLib.Release();
+	g_Engine.Release();
+	g_Server.Release();
+	g_Client.Release();
+	g_VGUI.Release();
 
 	ReleaseTools();
 
 	ConVar_Unregister();
 
+	g_sInputsDirectory.clear();
+	g_sSeedsDirectory.clear();
 	delete[] g_pwcGameVersion;
 
-	if (PLUGIN_LOADED)
+	if (m_bLoaded)
 		Msg("[Left4TAS] Successfully unloaded\n");
 }
 
@@ -388,7 +424,7 @@ const char *CLeft4TAS::GetPluginDescription(void)
 	return "Left4TAS v" PLUGIN_VER " : Sw1ft";
 }
 
-/*
+#ifndef NO_GAMEEVENT_CALLBACKS
 void CLeft4TAS::FireGameEvent(IGameEvent *event)
 {
 	const char *pszName = event->GetName();
@@ -398,7 +434,7 @@ int CLeft4TAS::GetEventDebugID()
 {
 	return EVENT_DEBUG_ID_INIT;
 }
-*/
+#endif
 
 void CLeft4TAS::Pause(void)
 {
@@ -414,7 +450,25 @@ void CLeft4TAS::GameFrame(bool simulating)
 
 void CLeft4TAS::LevelInit(char const *pMapName)
 {
-	CheckCurrentMap(pMapName);
+	// See server module
+
+	extern bool is_c5m5;
+	extern bool is_c13m4;
+
+	if (!strcmp(pMapName, "c5m5_bridge"))
+	{
+		is_c5m5 = true;
+		is_c13m4 = false;
+	}
+	else if (!strcmp(pMapName, "c13m4_cutthroatcreek"))
+	{
+		is_c5m5 = false;
+		is_c13m4 = true;
+	}
+	else
+	{
+		is_c13m4 = is_c5m5 = false;
+	}
 }
 
 void CLeft4TAS::ServerActivate(edict_t *pEdictList, int edictCount, int clientMax)
@@ -464,6 +518,7 @@ void CLeft4TAS::OnQueryCvarValueFinished(QueryCvarCookie_t iCookie, edict_t *pPl
 {
 }
 
+#ifdef L4D2
 void CLeft4TAS::OnEdictAllocated(edict_t *edict)
 {
 }
@@ -471,3 +526,4 @@ void CLeft4TAS::OnEdictAllocated(edict_t *edict)
 void CLeft4TAS::OnEdictFreed(const edict_t *edict)
 {
 }
+#endif

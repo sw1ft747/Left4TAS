@@ -1,4 +1,3 @@
-// C++
 // Input Manager
 
 #include "input_manager.h"
@@ -6,6 +5,7 @@
 #include "../prop_offsets.h"
 #include "../offsets.h"
 #include "../sdk.h"
+
 #include "usercmd.h"
 #include "utils.h"
 
@@ -22,8 +22,7 @@
 class CBaseCombatWeapon;
 class C_BaseCombatWeapon;
 
-extern std::string sInputsDirectory;
-extern const char *g_pszDirectory;
+extern std::string g_sInputsDirectory;
 
 extern IServerGameDLL *g_pServerGameDLL;
 extern IClientEntityList *g_pClientEntityList;
@@ -31,17 +30,22 @@ extern IClientEntityList *g_pClientEntityList;
 //-----------------------------------------------------------------------------
 
 CInputManager g_InputManager;
-InputFrame g_inputFrameBuffer;
+InputFrame g_InputFrameBuffer;
 
-InputData g_InputDataClient[MAX_SPLITSCREEN_PLAYERS];
-InputData g_InputDataServer[MAXCLIENTS + 1];
+//-----------------------------------------------------------------------------
+
+void CInputManager::Init()
+{
+	memset(&m_InputDataClient, 0, sizeof(m_InputDataClient));
+	memset(&m_InputDataServer, 0, sizeof(m_InputDataServer));
+}
 
 //-----------------------------------------------------------------------------
 
 const char *CInputManager::GetFilePath(const char *pszFilename)
 {
 	static char s_szFilepathBuffer[512];
-	int result = sprintf_s(s_szFilepathBuffer, sizeof(s_szFilepathBuffer), "%s%s.bin", sInputsDirectory.c_str(), pszFilename);
+	int result = sprintf_s(s_szFilepathBuffer, sizeof(s_szFilepathBuffer), "%s%s.bin", g_sInputsDirectory.c_str(), pszFilename);
 
 	if (result == -1)
 	{
@@ -227,7 +231,7 @@ void CInputManager::Stop(InputData *inputData)
 
 void CInputManager::ReadInput(InputData *inputData, CUserCmd *pCmd, void *pPlayer, bool bLocalClient)
 {
-	size_t bytes = fread(&g_inputFrameBuffer, 1, IM_FRAME_SIZE, inputData->input);
+	size_t bytes = fread(&g_InputFrameBuffer, 1, IM_FRAME_SIZE, inputData->input);
 
 	if (bytes != IM_FRAME_SIZE)
 	{
@@ -235,21 +239,21 @@ void CInputManager::ReadInput(InputData *inputData, CUserCmd *pCmd, void *pPlaye
 		return;
 	}
 
-	pCmd->viewangles.x = g_inputFrameBuffer.viewangles[0];
-	pCmd->viewangles.y = g_inputFrameBuffer.viewangles[1];
-	pCmd->viewangles.z = g_inputFrameBuffer.viewangles[2];
+	pCmd->viewangles.x = g_InputFrameBuffer.viewangles[0];
+	pCmd->viewangles.y = g_InputFrameBuffer.viewangles[1];
+	pCmd->viewangles.z = g_InputFrameBuffer.viewangles[2];
 
-	pCmd->forwardmove = g_inputFrameBuffer.forwardmove;
-	pCmd->sidemove = g_inputFrameBuffer.sidemove;
+	pCmd->forwardmove = g_InputFrameBuffer.forwardmove;
+	pCmd->sidemove = g_InputFrameBuffer.sidemove;
 
-	pCmd->buttons = g_inputFrameBuffer.buttons;
-	pCmd->impulse = g_inputFrameBuffer.impulse;
+	pCmd->buttons = g_InputFrameBuffer.buttons;
+	pCmd->impulse = g_InputFrameBuffer.impulse;
 
-	pCmd->mousedx = g_inputFrameBuffer.mousedx;
-	pCmd->mousedy = g_inputFrameBuffer.mousedy;
+	pCmd->mousedx = g_InputFrameBuffer.mousedx;
+	pCmd->mousedy = g_InputFrameBuffer.mousedy;
 
 	// Selecting weapon
-	if (g_inputFrameBuffer.weaponselect > 0)
+	if (g_InputFrameBuffer.weaponselect > 0)
 	{
 		if (bLocalClient)
 		{
@@ -266,10 +270,10 @@ void CInputManager::ReadInput(InputData *inputData, CUserCmd *pCmd, void *pPlaye
 
 				int nWeaponID = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::C_TerrorWeapon__GetWeaponID)();
 
-				if (nWeaponID == g_inputFrameBuffer.weaponselect)
+				if (nWeaponID == g_InputFrameBuffer.weaponselect)
 				{
 					pCmd->weaponselect = hWeapon.GetEntryIndex(); // entindex
-					pCmd->weaponsubtype = g_inputFrameBuffer.weaponsubtype;
+					pCmd->weaponsubtype = g_InputFrameBuffer.weaponsubtype;
 					break;
 				}
 			}
@@ -288,10 +292,10 @@ void CInputManager::ReadInput(InputData *inputData, CUserCmd *pCmd, void *pPlaye
 
 				int nWeaponID = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::CTerrorWeapon__GetWeaponID)();
 
-				if (nWeaponID == g_inputFrameBuffer.weaponselect)
+				if (nWeaponID == g_InputFrameBuffer.weaponselect)
 				{
 					pCmd->weaponselect = hWeapon.GetEntryIndex();
-					pCmd->weaponsubtype = g_inputFrameBuffer.weaponsubtype;
+					pCmd->weaponsubtype = g_InputFrameBuffer.weaponsubtype;
 					break;
 				}
 			}
@@ -301,20 +305,20 @@ void CInputManager::ReadInput(InputData *inputData, CUserCmd *pCmd, void *pPlaye
 
 void CInputManager::SaveInput(InputData *inputData, CUserCmd *pCmd, bool bLocalClient)
 {
-	memset(&g_inputFrameBuffer, 0, sizeof(g_inputFrameBuffer));
+	memset(&g_InputFrameBuffer, 0, sizeof(g_InputFrameBuffer));
 
-	g_inputFrameBuffer.viewangles[0] = pCmd->viewangles.x;
-	g_inputFrameBuffer.viewangles[1] = pCmd->viewangles.y;
-	g_inputFrameBuffer.viewangles[2] = pCmd->viewangles.z;
+	g_InputFrameBuffer.viewangles[0] = pCmd->viewangles.x;
+	g_InputFrameBuffer.viewangles[1] = pCmd->viewangles.y;
+	g_InputFrameBuffer.viewangles[2] = pCmd->viewangles.z;
 
-	g_inputFrameBuffer.forwardmove = pCmd->forwardmove;
-	g_inputFrameBuffer.sidemove = pCmd->sidemove;
+	g_InputFrameBuffer.forwardmove = pCmd->forwardmove;
+	g_InputFrameBuffer.sidemove = pCmd->sidemove;
 
-	g_inputFrameBuffer.buttons = pCmd->buttons;
-	g_inputFrameBuffer.impulse = pCmd->impulse;
+	g_InputFrameBuffer.buttons = pCmd->buttons;
+	g_InputFrameBuffer.impulse = pCmd->impulse;
 
-	g_inputFrameBuffer.mousedx = pCmd->mousedx;
-	g_inputFrameBuffer.mousedy = pCmd->mousedy;
+	g_InputFrameBuffer.mousedx = pCmd->mousedx;
+	g_InputFrameBuffer.mousedy = pCmd->mousedy;
 
 	if (pCmd->weaponselect > 0)
 	{
@@ -323,7 +327,7 @@ void CInputManager::SaveInput(InputData *inputData, CUserCmd *pCmd, bool bLocalC
 			C_BaseCombatWeapon *pWeapon = reinterpret_cast<C_BaseCombatWeapon *>(g_pClientEntityList->GetClientEntity(pCmd->weaponselect));
 
 			if (pWeapon)
-				g_inputFrameBuffer.weaponselect = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::C_TerrorWeapon__GetWeaponID)();
+				g_InputFrameBuffer.weaponselect = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::C_TerrorWeapon__GetWeaponID)();
 		}
 		else
 		{
@@ -331,9 +335,9 @@ void CInputManager::SaveInput(InputData *inputData, CUserCmd *pCmd, bool bLocalC
 			CBaseCombatWeapon *pWeapon = reinterpret_cast<CBaseCombatWeapon *>(EdictToBaseEntity(pEdict));
 
 			if (pWeapon)
-				g_inputFrameBuffer.weaponselect = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::CTerrorWeapon__GetWeaponID)();
+				g_InputFrameBuffer.weaponselect = GetVTableFunction<int (*)()>(pWeapon, Offsets::Functions::CTerrorWeapon__GetWeaponID)();
 		}
 	}
 
-	fwrite(&g_inputFrameBuffer, IM_FRAME_SIZE, 1, inputData->input);
+	fwrite(&g_InputFrameBuffer, IM_FRAME_SIZE, 1, inputData->input);
 }

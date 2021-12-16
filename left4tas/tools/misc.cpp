@@ -1,4 +1,3 @@
-// C++
 // Misc. Functions
 
 #include "misc.h"
@@ -10,7 +9,7 @@
 #include "../usermsg/usermessages.h"
 
 //-----------------------------------------------------------------------------
-// Interfaces
+// Imports
 //-----------------------------------------------------------------------------
 
 extern CGlobalVars *gpGlobals;
@@ -20,7 +19,16 @@ extern IVEngineServer *g_pEngineServer;
 extern IPlayerInfoManager *g_pPlayerInfoManager;
 
 //-----------------------------------------------------------------------------
+// Vars
 //-----------------------------------------------------------------------------
+
+static AcceptInputFn s_pfnAcceptInput = NULL;
+static TeleportFn s_pfnTeleport = NULL;
+
+UTIL_PlayerByIndexFn UTIL_PlayerByIndex = NULL; // CBasePlayer UTIL_PlayerByIndex(const int nIndex)
+GoAwayFromKeyboardFn GoAwayFromKeyboard = NULL; // void GoAwayFromKeyboard(CTerrorPlayer *pPlayer)
+TakeOverBotFn TakeOverBot = NULL; // bool TakeOverBot(CTerrorPlayer *pPlayer, bool bUnknown)
+ForEachTerrorPlayer_FindCharacterFn ForEachTerrorPlayer_FindCharacter = NULL; // bool ForEachTerrorPlayer_FindCharacter(FindCharacter &characterEntry)
 
 variant_t g_EmptyVariant;
 
@@ -28,10 +36,21 @@ variant_t g_EmptyVariant;
 // Functions
 //-----------------------------------------------------------------------------
 
-GoAwayFromKeyboardFn __GoAwayFromKeyboard = NULL;
-TakeOverBotFn __TakeOverBot = NULL;
-UTIL_PlayerByIndexFn __UTIL_PlayerByIndex = NULL;
-ForEachTerrorPlayer_FindCharacterFn __ForEachTerrorPlayer_FindCharacter = NULL;
+bool AcceptInput(CBaseEntity *pEntity, const char *pszInputName, CBaseEntity *pActivator, CBaseEntity *pCaller, variant_t Value, int outputID)
+{
+	if (!s_pfnAcceptInput)
+		s_pfnAcceptInput = GetVTableFunction<AcceptInputFn>(pEntity, Offsets::Functions::CBaseEntity__AcceptInput);
+
+	return s_pfnAcceptInput(pEntity, pszInputName, pActivator, pCaller, Value, outputID);
+}
+
+void Teleport(CBaseEntity *pEntity, const Vector *newPosition, const QAngle *newAngles, const Vector *newVelocity)
+{
+	if (!s_pfnTeleport)
+		s_pfnTeleport = GetVTableFunction<TeleportFn>(pEntity, Offsets::Functions::CBaseEntity__Teleport);
+
+	s_pfnTeleport(pEntity, newPosition, newAngles, newVelocity);
+}
 
 void SetName(int index, const char *szName)
 {
@@ -46,7 +65,7 @@ void SetName(int index, const char *szName)
 	void *pGameClient = (void *)((DWORD)pBaseClient - sizeof(void *));
 
 	// void CBaseClient::SetName( const char *name );
-	GetVTableFunction<void (__thiscall *)(void *, const char *)>(pGameClient, Offsets::Functions::CBaseClient__SetName)(pGameClient, szName);
+	GetVTableFunction<void(__thiscall *)(void *, const char *)>(pGameClient, Offsets::Functions::CBaseClient__SetName)(pGameClient, szName);
 
 	g_pServerGameClients->ClientSettingsChanged(pEdict);
 }
@@ -101,9 +120,9 @@ void SayText(int client, const char *pszMessage)
 	if (client < 1)
 	{
 		MessageBegin(MSG_BROADCAST, TYPE_SAYTEXT);
-			WriteByte(0);
-			WriteString(pszMessage);
-			WriteByte(0);
+		WriteByte(0);
+		WriteString(pszMessage);
+		WriteByte(0);
 		MessageEnd();
 	}
 	else
@@ -114,9 +133,9 @@ void SayText(int client, const char *pszMessage)
 			return;
 
 		MessageBegin(MSG_UNICAST_RELIABLE, TYPE_SAYTEXT, pEdict);
-			WriteByte(client);
-			WriteString(pszMessage);
-			WriteByte(0);
+		WriteByte(client);
+		WriteString(pszMessage);
+		WriteByte(0);
 		MessageEnd();
 	}
 }
@@ -133,12 +152,12 @@ void ClientPrint(int client, int dest, const char *pszMessage)
 	if (client < 1)
 	{
 		MessageBegin(MSG_BROADCAST, TYPE_TEXTMSG);
-			WriteByte(dest);
-			WriteString(pszMessage);
-			WriteString("");
-			WriteString("");
-			WriteString("");
-			WriteString("");
+		WriteByte(dest);
+		WriteString(pszMessage);
+		WriteString("");
+		WriteString("");
+		WriteString("");
+		WriteString("");
 		MessageEnd();
 	}
 	else
@@ -149,12 +168,12 @@ void ClientPrint(int client, int dest, const char *pszMessage)
 			return;
 
 		MessageBegin(MSG_UNICAST_RELIABLE, TYPE_TEXTMSG, pEdict);
-			WriteByte(dest);
-			WriteString(pszMessage);
-			WriteString("");
-			WriteString("");
-			WriteString("");
-			WriteString("");
+		WriteByte(dest);
+		WriteString(pszMessage);
+		WriteString("");
+		WriteString("");
+		WriteString("");
+		WriteString("");
 		MessageEnd();
 	}
 }
@@ -214,7 +233,7 @@ CON_COMMAND(tas_fake, "Create a fake client")
 
 CON_COMMAND(tas_idle, "Go to IDLE mode")
 {
-	if (!__GoAwayFromKeyboard || !__ForEachTerrorPlayer_FindCharacter || !__UTIL_PlayerByIndex)
+	if (!GoAwayFromKeyboard || !ForEachTerrorPlayer_FindCharacter || !UTIL_PlayerByIndex)
 		return;
 
 	if (args.ArgC() < 3)
@@ -244,7 +263,7 @@ CON_COMMAND(tas_idle, "Go to IDLE mode")
 
 CON_COMMAND(tas_take, "Take over a bot")
 {
-	if (!__TakeOverBot || !__ForEachTerrorPlayer_FindCharacter || !__UTIL_PlayerByIndex)
+	if (!TakeOverBot || !ForEachTerrorPlayer_FindCharacter || !UTIL_PlayerByIndex)
 		return;
 
 	if (args.ArgC() < 3)

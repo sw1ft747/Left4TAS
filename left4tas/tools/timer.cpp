@@ -1,4 +1,3 @@
-// C++
 // Timer
 
 #include "timer.h"

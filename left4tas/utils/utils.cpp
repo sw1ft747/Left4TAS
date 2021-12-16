@@ -1,9 +1,12 @@
-// C++
 // Utils
 
 #include "utils.h"
 
 bool g_bFailedInit = false;
+
+//-----------------------------------------------------------------------------
+// Iteratively get an interface from major to minor
+//-----------------------------------------------------------------------------
 
 void *GetInterface(CreateInterfaceFn interfaceFactory, const char *pszInterfaceVersion)
 {
@@ -32,6 +35,9 @@ void *GetInterface(CreateInterfaceFn interfaceFactory, const char *pszInterfaceV
 
 	return pInterface;
 }
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 const wchar_t *CStringToWideCString(const char *pszString)
 {

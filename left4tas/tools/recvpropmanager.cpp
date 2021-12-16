@@ -1,4 +1,3 @@
-// C++
 // Receive Properties Manager
 
 #include "../sdk.h"
@@ -177,7 +176,7 @@ CON_COMMAND(dump_recvprops, "Dump in the file 'recvprops.txt' receive properties
 
 CON_COMMAND(dump_recvprops_class, "Dump in the file 'recvprops.txt' receive properties of a given class")
 {
-	if (args.ArgC() != 2)
+	if (args.ArgC() < 2)
 	{
 		Msg("Usage: dump_recvprops_class [classname]\n");
 		return;

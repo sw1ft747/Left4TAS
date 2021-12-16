@@ -1,4 +1,3 @@
-// C++
 // VGUI Module
 
 #pragma once
@@ -92,13 +91,7 @@ public:
 using namespace vgui;
 
 //-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-
-typedef void (__thiscall *StartDrawingFn)(void *);
-typedef void (__thiscall *FinishDrawingFn)(void *);
-
-//-----------------------------------------------------------------------------
-// Interfaces
+// Imports
 //-----------------------------------------------------------------------------
 
 extern IPanel *g_pPanel;
@@ -108,9 +101,8 @@ extern CSurface *g_pSurface;
 extern IVEngineClient *g_pEngineClient;
 
 //-----------------------------------------------------------------------------
+// Interfaces
 //-----------------------------------------------------------------------------
-
-void DrawHUD();
 
 inline IPanel *ipanel()
 {
@@ -128,11 +120,27 @@ inline CSurface *surface()
 }
 
 //-----------------------------------------------------------------------------
-// Controls
+// VGUI Module
 //-----------------------------------------------------------------------------
 
-bool IsVGUIModuleInit();
+class CVGUI
+{
+public:
+	CVGUI();
 
-bool InitVGUIModule();
+	bool Init();
+	bool Release();
 
-void ReleaseVGUIModule();
+	bool IsInitialized() const;
+
+public:
+	void DrawHUD();
+
+private:
+	bool m_bInitialized;
+
+	HFont m_surfaceFont;
+	HFont m_surfaceFont2;
+};
+
+extern CVGUI g_VGUI;

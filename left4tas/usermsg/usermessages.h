@@ -1,4 +1,3 @@
-// C++
 // User Messages
 
 #include "recipientfilter.h"

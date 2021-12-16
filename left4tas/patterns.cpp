@@ -1,4 +1,3 @@
-// C++
 // Patterns
 
 #include "patterns.h"

@@ -1,4 +1,3 @@
-// C++
 // Offsets of Network/Receive Properties
 
 #include "prop_offsets.h"

@@ -1,4 +1,3 @@
-
 // Trampoline Hook
 
 #include "trampoline_hook.h"

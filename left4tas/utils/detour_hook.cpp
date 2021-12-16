@@ -1,4 +1,3 @@
-// C++
 // Detour Hook
 
 #include "detour_hook.h"

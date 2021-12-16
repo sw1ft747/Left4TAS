@@ -1,4 +1,3 @@
-// C++
 // Simple Trigger
 
 #pragma once

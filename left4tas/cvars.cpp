@@ -1,4 +1,3 @@
-// C++
 // Console Variables
 
 #include "cvars.h"
@@ -6,7 +5,7 @@
 #include "tools/timer.h"
 
 #include "modules/client.h"
-#include "structs/cl_splitscreen.h"
+#include "game/cl_splitscreen.h"
 
 #define CVAR_INIT ConVar *cvar = dynamic_cast<ConVar *>(var); float flValue = cvar->GetFloat()
 #define CVAR_IGNORE_NOT_CHANGED if (flValue == flOldValue) return
@@ -81,9 +80,9 @@ void OnSetAngle(IConVar *var, const char *pOldValue, float flOldValue)
 	const char *pszName = var->GetName();
 
 	if (!strcmp(pszName, "tas_setpitch"))
-		g_InputState[slot].bSetPitch = true;
+		g_Client.GetInputAction(slot).m_bSetPitch = true;
 	else
-		g_InputState[slot].bSetYaw = true;
+		g_Client.GetInputAction(slot).m_bSetYaw = true;
 }
 
 void OnTimeScaleChange(IConVar *var, const char *pOldValue, float flOldValue)
@@ -95,7 +94,7 @@ void OnTimeScaleChange(IConVar *var, const char *pOldValue, float flOldValue)
 	if (!sv_player_stuck_tolerance)
 		sv_player_stuck_tolerance = g_pCVar->FindVar("sv_player_stuck_tolerance");
 
-	// Fix teleport time
+	// Fix teleport time. ToDo: is fair to change?
 	sv_player_stuck_tolerance->SetValue(10.0f * (1.0f / flValue));
 
 	if (flValue != 1.0f)

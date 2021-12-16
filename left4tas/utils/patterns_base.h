@@ -1,4 +1,3 @@
-
 // Patterns
 
 #pragma once

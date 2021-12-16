@@ -1,14 +1,14 @@
-// C++
 // Input Manager
 
 #pragma once
 
 #include <stdio.h>
 
-//-----------------------------------------------------------------------------
+#include "../game/defs.h"
 
-#define MAXCLIENTS 32
-#define MAX_SPLITSCREEN_PLAYERS 2
+//-----------------------------------------------------------------------------
+// Defs
+//-----------------------------------------------------------------------------
 
 #define INPUT_MANAGER_VERSION 1
 
@@ -20,8 +20,13 @@
 #define IM_FRAME_SIZE sizeof(InputFrame)
 
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 
 class CUserCmd;
+
+//-----------------------------------------------------------------------------
+// Extra structs
+//-----------------------------------------------------------------------------
 
 struct InputBaseInfo
 {
@@ -58,8 +63,21 @@ struct InputData
 	InputBaseInfo	baseInfo;
 };
 
+//-----------------------------------------------------------------------------
+// Main class
+//-----------------------------------------------------------------------------
+
 class CInputManager
 {
+public:
+	void Init();
+
+	// Get a splitscreen player's input data (client-side)
+	inline InputData *GetClientInputData(int nSlot);
+
+	// Get a player's input data (server-side)
+	inline InputData *GetServerInputData(int nPlayerIndex);
+
 public:
 	void Record(const char *pszFilename, InputData *inputData, float orientation[3][3] /* origin, viewangles, velocity */);
 	void Playback(const char *pszFilename, InputData *inputData);
@@ -72,12 +90,20 @@ public:
 
 private:
 	const char *GetFilePath(const char *pszFilename);
+
+private:
+	InputData m_InputDataClient[MAX_SPLITSCREEN_PLAYERS];
+	InputData m_InputDataServer[MAXCLIENTS + 1];
 };
 
-//-----------------------------------------------------------------------------
-// Access to a specified player
-//-----------------------------------------------------------------------------
+inline InputData *CInputManager::GetClientInputData(int nSlot)
+{
+	return &m_InputDataClient[nSlot];
+}
 
-extern InputData g_InputDataClient[MAX_SPLITSCREEN_PLAYERS];
-extern InputData g_InputDataServer[MAXCLIENTS + 1];
+inline InputData *CInputManager::GetServerInputData(int nPlayerIndex)
+{
+	return &m_InputDataServer[nPlayerIndex];
+}
+
 extern CInputManager g_InputManager;

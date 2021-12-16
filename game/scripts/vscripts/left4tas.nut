@@ -1,4 +1,3 @@
-// Squirrel
 // Left4TAS
 
 L4TAS_CB_ROUND_RESTART <- 0;

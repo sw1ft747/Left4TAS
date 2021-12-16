@@ -1,4 +1,3 @@
-// C++
 // Detour Hook
 
 #pragma once

@@ -1,4 +1,3 @@
-
 // VTable Hook
 
 #pragma once

@@ -7,14 +7,20 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "left4tas", "left4tas\left4t
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
+		L4D Debug|x86 = L4D Debug|x86
+		L4D|x86 = L4D|x86
+		L4D2 Debug|x86 = L4D2 Debug|x86
+		L4D2|x86 = L4D2|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Debug|x86.ActiveCfg = Debug|Win32
-		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Debug|x86.Build.0 = Debug|Win32
-		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Release|x86.ActiveCfg = Release|Win32
-		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.Release|x86.Build.0 = Release|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D Debug|x86.ActiveCfg = L4D Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D Debug|x86.Build.0 = L4D Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D|x86.ActiveCfg = L4D|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D|x86.Build.0 = L4D|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D2 Debug|x86.ActiveCfg = L4D2 Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D2 Debug|x86.Build.0 = L4D2 Debug|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D2|x86.ActiveCfg = L4D2|Win32
+		{37E35D83-8D67-4EBF-A330-3AAC38DD5769}.L4D2|x86.Build.0 = L4D2|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

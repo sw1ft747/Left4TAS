@@ -22,8 +22,8 @@
     <Filter Include="libdasm">
       <UniqueIdentifier>{033f5582-86a2-4a17-bc6e-723563157f88}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Left4TAS\Structs">
-      <UniqueIdentifier>{0bb5de9e-83d8-4cd1-a244-895b131a01ac}</UniqueIdentifier>
+    <Filter Include="Left4TAS\Game">
+      <UniqueIdentifier>{ffe238a2-4c72-4456-9a80-83fc96a6e2c7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -112,6 +112,9 @@
       <Filter>Left4TAS\Tools</Filter>
     </ClCompile>
     <ClCompile Include="tools\input_manager.cpp">
+      <Filter>Left4TAS\Tools</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\tools.cpp">
       <Filter>Left4TAS\Tools</Filter>
     </ClCompile>
   </ItemGroup>
@@ -218,23 +221,26 @@
     <ClInclude Include="tools\strafe.h">
       <Filter>Left4TAS\Tools</Filter>
     </ClInclude>
-    <ClInclude Include="structs\cl_splitscreen.h">
-      <Filter>Left4TAS\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="structs\inputdata_t.h">
-      <Filter>Left4TAS\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="structs\cmd.h">
-      <Filter>Left4TAS\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="structs\functors.h">
-      <Filter>Left4TAS\Structs</Filter>
-    </ClInclude>
     <ClInclude Include="tools\random.h">
       <Filter>Left4TAS\Tools</Filter>
     </ClInclude>
     <ClInclude Include="tools\input_manager.h">
       <Filter>Left4TAS\Tools</Filter>
+    </ClInclude>
+    <ClInclude Include="game\cl_splitscreen.h">
+      <Filter>Left4TAS\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\cmd.h">
+      <Filter>Left4TAS\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\defs.h">
+      <Filter>Left4TAS\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\functors.h">
+      <Filter>Left4TAS\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\inputdata_t.h">
+      <Filter>Left4TAS\Game</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

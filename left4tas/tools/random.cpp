@@ -69,6 +69,11 @@ int CRandomStream::GenerateRandomNumber()
 	return m_iy;
 }
 
+#pragma warning(push)
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#pragma warning(disable: 4305)
+
 float CRandomStream::RandomFloat( float flLow, float flHigh )
 {
 	float fl = AM * GenerateRandomNumber();
@@ -92,6 +97,9 @@ float CRandomStream::RandomFloatExp( float flMinVal, float flMaxVal, float flExp
 	}
 	return (fl * ( flMaxVal - flMinVal ) ) + flMinVal;
 }
+
+#pragma warning(pop)
+#pragma warning(pop)
 
 int CRandomStream::RandomInt( int iLow, int iHigh )
 {

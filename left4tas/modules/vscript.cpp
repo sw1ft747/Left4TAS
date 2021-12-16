@@ -1,4 +1,3 @@
-// C++
 // VScript Module
 
 #include "../patterns.h"
@@ -15,14 +14,23 @@
 #include "../libdasm/libdasm.h"
 
 //-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+typedef bool (*VScriptServerInitFn)();
+typedef void (*VScriptServerTermFn)();
+
+//-----------------------------------------------------------------------------
+// Imports
+//-----------------------------------------------------------------------------
 
 extern IVEngineServer *g_pEngineServer;
 extern IServerPluginHelpers *g_pServerPluginHelpers;
 
 //-----------------------------------------------------------------------------
+// Global Vars
+//-----------------------------------------------------------------------------
 
-static bool __INITIALIZED__ = false;
-static IScriptVM **s_ScriptVM = NULL;
+CVScript g_VScript;
 
 IScriptVM *g_pScriptVM = NULL;
 IScriptManager *g_pScriptManager = NULL;
@@ -30,7 +38,7 @@ IScriptManager *g_pScriptManager = NULL;
 HSCRIPT g_hScriptL4TAS = NULL;
 
 //-----------------------------------------------------------------------------
-// Init hooks
+// Declare hooks
 //-----------------------------------------------------------------------------
 
 TRAMPOLINE_HOOK(VScriptInit_Hook);
@@ -206,10 +214,34 @@ BEGIN_SCRIPTDESC_ROOT_NAMED(CScriptLeft4TAS, "CLeft4TAS", SCRIPT_SINGLETON "Inte
 END_SCRIPTDESC();
 
 //-----------------------------------------------------------------------------
+// Hooks
+//-----------------------------------------------------------------------------
+
+bool VScriptServerInit_Hooked()
+{
+	bool bVMCreated = VScriptServerInit_Original();
+
+	if (bVMCreated)
+	{
+		g_pScriptVM = *g_VScript.GetScriptVMPointer();
+		g_VScript.InitVScriptBridge();
+	}
+
+	return bVMCreated;
+}
+
+void VScriptServerTerm_Hooked()
+{
+	g_VScript.TermVScriptBridge();
+
+	VScriptServerTerm_Original();
+}
+
+//-----------------------------------------------------------------------------
 // Called when the VM started successfully
 //-----------------------------------------------------------------------------
 
-static void InitVScriptBridge()
+void CVScript::InitVScriptBridge()
 {
 	if (g_pScriptVM)
 	{
@@ -222,7 +254,7 @@ static void InitVScriptBridge()
 // Called before the VM will be destroyed
 //-----------------------------------------------------------------------------
 
-static void TermVScriptBridge()
+void CVScript::TermVScriptBridge()
 {
 	if (g_pScriptVM && g_hScriptL4TAS)
 	{
@@ -234,43 +266,23 @@ static void TermVScriptBridge()
 }
 
 //-----------------------------------------------------------------------------
-// Hooks
+// VScript module implementations
 //-----------------------------------------------------------------------------
 
-bool VScriptServerInit_Hooked()
+CVScript::CVScript() : m_bInitialized(false), m_ppScriptVM(NULL)
 {
-	bool bVMCreated = VScriptServerInit_Original();
-
-	if (bVMCreated)
-	{
-		g_pScriptVM = *s_ScriptVM;
-		InitVScriptBridge();
-	}
-
-	return bVMCreated;
 }
 
-void VScriptServerTerm_Hooked()
+bool CVScript::IsInitialized() const
 {
-	TermVScriptBridge();
-
-	VScriptServerTerm_Original();
+	return m_bInitialized;
 }
 
-//-----------------------------------------------------------------------------
-// Init/release VScript module
-//-----------------------------------------------------------------------------
-
-bool IsVScriptModuleInit()
-{
-	return __INITIALIZED__;
-}
-
-bool InitVScriptModule()
+bool CVScript::Init()
 {
 	INSTRUCTION instruction;
 
-	if (!__UTIL_PlayerByIndex || !__GoAwayFromKeyboard || !__TakeOverBot)
+	if (!UTIL_PlayerByIndex || !GoAwayFromKeyboard || !TakeOverBot)
 		return false;
 
 	void *pVScriptServerInit = FIND_PATTERN(L"server.dll", Patterns::Server::VScriptServerInit);
@@ -307,7 +319,7 @@ bool InitVScriptModule()
 
 	if (instruction.type == INSTRUCTION_TYPE_CMP && instruction.op1.type == OPERAND_TYPE_MEMORY && instruction.op2.type == OPERAND_TYPE_IMMEDIATE)
 	{
-		s_ScriptVM = reinterpret_cast<IScriptVM **>(instruction.op1.displacement);
+		m_ppScriptVM = reinterpret_cast<IScriptVM **>(instruction.op1.displacement);
 	}
 	else
 	{
@@ -315,7 +327,7 @@ bool InitVScriptModule()
 		return false;
 	}
 
-	g_pScriptVM = *s_ScriptVM;
+	g_pScriptVM = *m_ppScriptVM;
 
 	HOOK_FUNCTION(VScriptInit_Hook, pVScriptServerInit, VScriptServerInit_Hooked, VScriptServerInit_Original, VScriptServerInitFn);
 	HOOK_FUNCTION(VScriptTerm_Hook, pVScriptServerTerm, VScriptServerTerm_Hooked, VScriptServerTerm_Original, VScriptServerTermFn);
@@ -323,17 +335,19 @@ bool InitVScriptModule()
 	if (g_pScriptVM) // already on the map, connect the plugin with VScripts
 		InitVScriptBridge();
 
-	__INITIALIZED__ = true;
+	m_bInitialized = true;
 	return true;
 }
 
-void ReleaseVScriptModule()
+bool CVScript::Release()
 {
-	if (!__INITIALIZED__)
-		return;
+	if (!m_bInitialized)
+		return false;
 
 	TermVScriptBridge();
 
 	UNHOOK_FUNCTION(VScriptInit_Hook);
 	UNHOOK_FUNCTION(VScriptTerm_Hook);
+
+	return true;
 }

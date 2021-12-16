@@ -1,28 +1,27 @@
-// C++
 // Utils
 
 #pragma once
+
+#include "../sdk.h"
+#include "icliententity.h"
 
 #define FAILED_INIT "[L4TAS] %s failed initialization\n"
 #define FAILED_IFACE "[L4TAS] Failed to get %s interface\n"
 
 #define M_SWAP(a,b,temp) ((temp)=(a),(a)=(b),(b)=(temp))
 
-#include "../sdk.h"
-#include "icliententity.h"
-
+//-----------------------------------------------------------------------------
+// Imports
 //-----------------------------------------------------------------------------
 
 extern CGlobalVars *gpGlobals;
-
 extern bool g_bFailedInit;
 
-//-----------------------------------------------------------------------------
-
 void *GetInterface(CreateInterfaceFn interfaceFactory, const char *pszInterfaceVersion);
-
 const wchar_t *CStringToWideCString(const char *pszString);
 
+//-----------------------------------------------------------------------------
+// Failed init messages
 //-----------------------------------------------------------------------------
 
 inline void FailedInit(const char *object)
@@ -37,6 +36,10 @@ inline void FailedIFace(const char *object)
 	g_bFailedInit = true;
 }
 
+//-----------------------------------------------------------------------------
+// Get a function from virtual methods table
+//-----------------------------------------------------------------------------
+
 inline void *GetVTableFunction(void *pBaseClass, int nIndex)
 {
 	const unsigned long *pVTable = *reinterpret_cast<unsigned long **>(pBaseClass);
@@ -50,22 +53,38 @@ inline T GetVTableFunction(void *pBaseClass, int nIndex)
 	return reinterpret_cast<T>(pVTable[nIndex]);
 }
 
+//-----------------------------------------------------------------------------
+// Cast a function
+//-----------------------------------------------------------------------------
+
 template <typename T>
 inline T GetFunction(void *pFunction)
 {
 	return reinterpret_cast<T>(pFunction);
 }
 
+//-----------------------------------------------------------------------------
+// Offset an address
+//-----------------------------------------------------------------------------
+
 inline void *GetOffset(void *ptr, unsigned long offset)
 {
 	return (void *)((unsigned char *)ptr + offset);
 }
+
+//-----------------------------------------------------------------------------
+// Get function real address from the CALL opcode
+//-----------------------------------------------------------------------------
 
 inline void *GetFunctionAddress(void *pCallAddress /* Including CALL opcode */)
 {
 	unsigned long dwRelativeAddress = *reinterpret_cast<unsigned long *>(GetOffset(pCallAddress, 1));
 	return (void *)(dwRelativeAddress + (unsigned long)pCallAddress + sizeof(void *) + 1);
 }
+
+//-----------------------------------------------------------------------------
+// Edict functions
+//-----------------------------------------------------------------------------
 
 inline bool IsEdictValid(const edict_t *pEdict)
 {
@@ -90,6 +109,10 @@ inline edict_t *EntIndexToEdict(const int nIndex)
 	return NULL;
 }
 
+//-----------------------------------------------------------------------------
+// Base entity functions
+//-----------------------------------------------------------------------------
+
 inline edict_t *BaseEntityToEdict(CBaseEntity *pEntity)
 {
 	IServerUnknown *pUnknown = reinterpret_cast<IServerUnknown *>(pEntity);
@@ -101,7 +124,7 @@ inline edict_t *BaseEntityToEdict(CBaseEntity *pEntity)
 	return NULL;
 }
 
-inline int EntIndexOfBaseEntity(CBaseEntity *pEntity)
+inline int EntIndexOfBaseEntity(CBaseEntity *pEntity) // server
 {
 	IServerUnknown *pUnknown = reinterpret_cast<IServerUnknown *>(pEntity);
 	CBaseHandle handle = pUnknown->GetRefEHandle();
@@ -112,7 +135,7 @@ inline int EntIndexOfBaseEntity(CBaseEntity *pEntity)
 		return handle.GetEntryIndex();
 }
 
-inline int EntIndexOfBaseEntity(IClientEntity *pEntity)
+inline int EntIndexOfBaseEntity(IClientEntity *pEntity) // client
 {
 	IClientNetworkable *pNetworkable = pEntity->GetClientNetworkable();
 

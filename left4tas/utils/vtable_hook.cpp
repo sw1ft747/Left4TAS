@@ -1,4 +1,3 @@
-
 // VTable Hook
 
 #include "vtable_hook.h"

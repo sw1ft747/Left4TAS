@@ -1,4 +1,3 @@
-// C++
 // Console Variables
 
 #pragma once

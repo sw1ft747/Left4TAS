@@ -1,11 +1,10 @@
-// C++
 // VGUI Module
 
 #include "vgui.h"
 #include "utils.h"
 #include "client.h"
 
-#include "../structs/cl_splitscreen.h"
+#include "../game/cl_splitscreen.h"
 
 #include "../tools/timer.h"
 #include "../prop_offsets.h"
@@ -17,7 +16,17 @@
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 
-static bool __INITIALIZED__ = false;
+class C_BasePlayer;
+
+typedef void (__thiscall *StartDrawingFn)(void *);
+typedef void (__thiscall *FinishDrawingFn)(void *);
+
+//-----------------------------------------------------------------------------
+// Global Vars
+//-----------------------------------------------------------------------------
+
+CVGUI g_VGUI;
+
 const wchar_t *g_pwcPluginVersion = NULL;
 
 Color g_HUDColor(200, 200, 200, 255);
@@ -27,22 +36,16 @@ IScheme *g_pScheme = NULL;
 CSurface *g_pSurface = NULL;
 ISchemeManager *g_pSchemeManager = NULL;
 
-HFont *g_pSurfaceFont = 0;
-
-HFont g_surfaceFont = 0;
-HFont g_surfaceFont2 = 0;
-
 //-----------------------------------------------------------------------------
+// Imports
 //-----------------------------------------------------------------------------
-
-class C_BasePlayer;
 
 extern C_BasePlayer **s_pLocalPlayer;
 extern const wchar_t *g_pwcGameVersion;
 extern const char *g_szPluginVersion;
 
 //-----------------------------------------------------------------------------
-// Functions
+// VGUI Functions
 //-----------------------------------------------------------------------------
 
 StartDrawingFn StartDrawing = NULL;
@@ -52,20 +55,20 @@ FinishDrawingFn FinishDrawing = NULL;
 // Hooks
 //-----------------------------------------------------------------------------
 
-void DrawHUD()
+void CVGUI::DrawHUD()
 {
 	if (vhud_enable.GetBool() && g_pEngineClient->IsInGame())
 	{
-		if (!surface()->__GetFontTall(g_surfaceFont))
+		if (!surface()->__GetFontTall(m_surfaceFont))
 		{
-			if (g_surfaceFont = surface()->__CreateFont())
-				surface()->__SetFontGlyphSet(g_surfaceFont, "Lucida-Console", 21, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
+			if (m_surfaceFont = surface()->__CreateFont())
+				surface()->__SetFontGlyphSet(m_surfaceFont, "Lucida-Console", 21, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
 		}
 
-		if (!surface()->__GetFontTall(g_surfaceFont2))
+		if (!surface()->__GetFontTall(m_surfaceFont2))
 		{
-			if (g_surfaceFont2 = surface()->__CreateFont())
-				surface()->__SetFontGlyphSet(g_surfaceFont2, "Lucida-Console", 35, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
+			if (m_surfaceFont2 = surface()->__CreateFont())
+				surface()->__SetFontGlyphSet(m_surfaceFont2, "Lucida-Console", 35, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE);
 		}
 
 		int width, height;
@@ -78,7 +81,7 @@ void DrawHUD()
 
 		StartDrawing(surface());
 
-		surface()->DrawSetTextFont(g_surfaceFont);
+		surface()->DrawSetTextFont(m_surfaceFont);
 		surface()->DrawSetTextColor(g_HUDColor);
 
 		// Game version
@@ -95,7 +98,7 @@ void DrawHUD()
 			surface()->DrawPrintText(g_pwcPluginVersion, wcslen(g_pwcPluginVersion));
 		}
 
-		if (IS_VALID_SPLIT_SCREEN_SLOT(g_nForceUser) && (pLocal = s_pLocalPlayer[g_nForceUser]))
+		if (IS_VALID_SPLIT_SCREEN_SLOT(g_Client.m_nForceUser) && (pLocal = g_Client.GetLocalPlayer(g_Client.m_nForceUser)))
 		{
 			float flSpeed = 0.f, flSpeed2D = 0.f;
 			Vector vecVelocity = *reinterpret_cast<Vector *>(GetOffset(pLocal, RecvPropOffsets::m_vecVelocity));
@@ -110,7 +113,7 @@ void DrawHUD()
 			if (vhud_angles.GetBool())
 			{
 				QAngle viewangles;
-				GetViewAngles(g_nForceUser, viewangles);
+				g_Client.GetViewAngles(g_Client.m_nForceUser, viewangles);
 
 				int pitchWidth = static_cast<int>(width * vhud_angles_x.GetFloat());
 				int pitchHeight = static_cast<int>(height * vhud_angles_y.GetFloat());
@@ -198,17 +201,17 @@ void DrawHUD()
 				int jumpsWidth = static_cast<int>(width * vhud_bhop_info_x.GetFloat());
 				int jumpsHeight = static_cast<int>(height * vhud_bhop_info_y.GetFloat());
 
-				swprintf(buffer, ARRAYSIZE(buffer), L"Jumps: %lu", g_bhopInfo.nJumps);
+				swprintf(buffer, ARRAYSIZE(buffer), L"Jumps: %lu", g_Client.GetBunnyhopInfo().m_nJumps);
 
 				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight);
 				surface()->DrawPrintText(buffer, wcslen(buffer));
 
-				swprintf(buffer, ARRAYSIZE(buffer), L"Speed loss: %f", g_bhopInfo.flSpeedLoss);
+				swprintf(buffer, ARRAYSIZE(buffer), L"Speed loss: %f", g_Client.GetBunnyhopInfo().m_flSpeedLoss);
 
 				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 2);
 				surface()->DrawPrintText(buffer, wcslen(buffer));
 
-				swprintf(buffer, ARRAYSIZE(buffer), L"Percentage: %f %%", g_bhopInfo.flPercentage);
+				swprintf(buffer, ARRAYSIZE(buffer), L"Percentage: %f %%", g_Client.GetBunnyhopInfo().m_flPercentage);
 
 				surface()->DrawSetTextPos(jumpsWidth, jumpsHeight + lineBreakHeight * 3);
 				surface()->DrawPrintText(buffer, wcslen(buffer));
@@ -220,14 +223,14 @@ void DrawHUD()
 				int speedWidth = static_cast<int>(width * vhud_speed_x.GetFloat());
 				int speedHeight = static_cast<int>(height * vhud_speed_y.GetFloat());
 
-				surface()->DrawSetTextFont(g_surfaceFont2);
+				surface()->DrawSetTextFont(m_surfaceFont2);
 
 				swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(flSpeed2D));
 
 				surface()->DrawSetTextPos(speedWidth, speedHeight);
 				surface()->DrawPrintText(buffer, wcslen(buffer));
 
-				swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(g_bhopInfo.flLastSpeed));
+				swprintf(buffer, ARRAYSIZE(buffer), L"%lu", static_cast<unsigned long>(g_Client.GetBunnyhopInfo().m_flLastSpeed));
 
 				surface()->DrawSetTextPos(speedWidth, speedHeight + vhud_line_break_height2.GetFloat());
 				surface()->DrawPrintText(buffer, wcslen(buffer));
@@ -237,7 +240,7 @@ void DrawHUD()
 		// Timer
 		if (vhud_timer.GetBool())
 		{
-			surface()->DrawSetTextFont(g_surfaceFont2);
+			surface()->DrawSetTextFont(m_surfaceFont2);
 
 			if (vhud_timer_format.GetBool())
 			{
@@ -265,17 +268,21 @@ void DrawHUD()
 }
 
 //-----------------------------------------------------------------------------
-// Init/release VGUI module
+// VGUI module implementations
 //-----------------------------------------------------------------------------
 
-bool IsVGUIModuleInit()
+CVGUI::CVGUI() : m_bInitialized(false), m_surfaceFont(0), m_surfaceFont2(0)
 {
-	return __INITIALIZED__;
 }
 
-bool InitVGUIModule()
+bool CVGUI::IsInitialized() const
 {
-	if (!IsClientModuleInit())
+	return m_bInitialized;
+}
+
+bool CVGUI::Init()
+{
+	if (!g_Client.IsInitialized())
 		return false;
 
 	const char szVGUI_Panel[] = "VGUI_Panel009";
@@ -344,13 +351,13 @@ bool InitVGUIModule()
 	}
 
 	// Init custom font
-	if (!(g_surfaceFont = surface()->__CreateFont()) || !surface()->__SetFontGlyphSet(g_surfaceFont, "Lucida-Console", 21, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE))
+	if (!(m_surfaceFont = surface()->__CreateFont()) || !surface()->__SetFontGlyphSet(m_surfaceFont, "Lucida-Console", 21, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE))
 	{
 		Warning("[L4TAS] Failed to init custom font\n");
 		return false;
 	}
 
-	if (!(g_surfaceFont2 = surface()->__CreateFont()) || !surface()->__SetFontGlyphSet(g_surfaceFont2, "Lucida-Console", 35, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE))
+	if (!(m_surfaceFont2 = surface()->__CreateFont()) || !surface()->__SetFontGlyphSet(m_surfaceFont2, "Lucida-Console", 35, 700, 0, 0, FONTFLAG_DROPSHADOW | FONTFLAG_OUTLINE))
 	{
 		Warning("[L4TAS] Failed to init custom font #2\n");
 		return false;
@@ -361,14 +368,16 @@ bool InitVGUIModule()
 
 	g_pwcPluginVersion = CStringToWideCString(g_szPluginVersion);
 
-	__INITIALIZED__ = true;
+	m_bInitialized = true;
 	return true;
 }
 
-void ReleaseVGUIModule()
+bool CVGUI::Release()
 {
-	if (!__INITIALIZED__)
-		return;
+	if (!m_bInitialized)
+		return false;
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------

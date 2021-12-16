@@ -1,36 +1,46 @@
-// C++
 // Engine Module
 
 #pragma once
 
 #include "../sdk.h"
 
-#include "../structs/cmd.h"
+#include "../game/cmd.h"
 
 //-----------------------------------------------------------------------------
+// Engine Module
 //-----------------------------------------------------------------------------
 
-typedef void (__thiscall *SetPausedFn)(void *, bool);
+class CEngine
+{
+public:
+	CEngine();
 
-typedef bool (__cdecl *Host_NewGameFn)(char *, bool, bool, bool, const char *, const char *);
-typedef void (__cdecl *Host_ChangelevelFn)(bool, const char *, const char *);
+	bool Init();
+	bool Release();
 
-typedef void (__thiscall *PaintFn)(void *, PaintMode_t);
+	bool IsInitialized() const;
 
-//-----------------------------------------------------------------------------
+public:
+	inline bool IsLevelChanging() const;
+	inline void SetLevelChangeState(bool bState);
 
-extern bool g_bLevelChange;
-extern void *g_pGetBaseLocalClient;
+	inline void *GetBaseLocalClientFunc() const;
 
-extern Cbuf_AddTextFn Cbuf_AddText;
-extern Cbuf_ExecuteFn Cbuf_Execute;
+public:
+	Cbuf_AddTextFn Cbuf_AddText; // void Cbuf_AddTextFn(ECommandTarget_t eTarget, const char *text, cmd_source_t source)
+	Cbuf_ExecuteFn Cbuf_Execute; // void Cbuf_ExecuteFn()
 
-//-----------------------------------------------------------------------------
-// Controls
-//-----------------------------------------------------------------------------
+private:
+	bool m_bInitialized;
 
-bool IsEngineModuleInit();
+	bool m_bLevelChange;
+	void *m_pfnGetBaseLocalClient;
+};
 
-bool InitEngineModule();
+inline bool CEngine::IsLevelChanging() const { return m_bLevelChange; }
 
-void ReleaseEngineModule();
+inline void CEngine::SetLevelChangeState(bool bState) { m_bLevelChange = bState; }
+
+inline void *CEngine::GetBaseLocalClientFunc() const { return m_pfnGetBaseLocalClient; }
+
+extern CEngine g_Engine;

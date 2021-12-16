@@ -1,4 +1,3 @@
-// C++
 // Network Properties Manager
 
 #include "../sdk.h"
@@ -175,7 +174,7 @@ CON_COMMAND(dump_netprops, "Dump in the file 'netprops.txt' network properties o
 
 CON_COMMAND(dump_netprops_class, "Dump in the file 'netprops.txt' network properties of a given class")
 {
-	if (args.ArgC() != 2)
+	if (args.ArgC() < 2)
 	{
 		Msg("Usage: dump_netprops_class [classname]\n");
 		return;

@@ -1,4 +1,3 @@
-// Squirrel
 // Left4TAS
 
 annoying_door <- null;
